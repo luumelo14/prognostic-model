@@ -1,27 +1,5 @@
-# The following code slightly based on the code found on https://github.com/SebastianMH/random-forest-classifier
-# that has the following MIT license:
-# The MIT License (MIT)
-# Copyright (c) 2015 Sebastian Miller-Hack
-
-# Permission is hereby granted, free of charge, to any person obtaining a copy
-# of this software and associated documentation files (the "Software"), to deal
-# in the Software without restriction, including without limitation the rights
-# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-# copies of the Software, and to permit persons to whom the Software is
-# furnished to do so, subject to the following conditions:
-
-# The above copyright notice and this permission notice shall be included in all
-# copies or substantial portions of the Software.
-
-# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-# SOFTWARE.
-
-
+# This is an implementation of Random Forests as proposed by: 
+# Breiman, L. (2001). Random Forests. Machine Learning, 45(1), 5–32.
 from sklearn.tree import DecisionTreeClassifier
 import numpy as np
 import pandas as pd
@@ -150,17 +128,9 @@ class RandomForest(object):
             y_subset = y[index_sub_samples]
             tree = dt.DecisionTreeClassifier(max_depth=self.max_depth,mtry=self.mtry,
                 missing_branch=self.missing_branch, random_state=self.random_state+i)
-            tree.index = i
-            # if(i == 0):
-            #     tree.print = True
-            #     tree.original_attributes = self.original_attributes
-            #     tree.fit(X_subset,y_subset)
-            #     tree.to_pdf(self.original_attributes,'out2.pdf')
-            #     exit()
+            #tree.index = i
             tree.fit(X_subset,y_subset)
-            # if(i == 1000):
-            #     tree.to_pdf(tree.original_attributes,'out.pdf')
-            #     print('okay')
+            
             self.forest.append(tree)
         # if out-of-bag error should be calculated
         if self.oob_error is True:
@@ -276,7 +246,11 @@ class RandomForest(object):
         accuracy = correct/n_samples
         return accuracy
 
-
+    # this function implements the method proposed in:
+    # Palczewska, A., Palczewski, J., Robinson, R. M., & Neagu, D. (2013). 
+    # Interpreting random forest models using a feature contribution method. 
+    # In 2013 IEEE 14th International Conference on Information Reuse and Integration (pp. 112–119). 
+    # Retrieved from http://eprints.whiterose.ac.uk/79159/1/feature_contribution_camera_ready.pdf
     def feature_contribution(self):
         print('calculating feature contribution')
 
@@ -347,7 +321,17 @@ class RandomForest(object):
 
         return fcs
 
-
+    # variable importance calculation for Random Forests.
+    # --- when vitype='err' and vimissing=False, then calculation is made as proposed in:
+    #       Breiman, L. (2001). Random Forests. Machine Learning, 45(1), 5–32.
+    # --- when vitype='err' and vimissing=True, then calculation is made as proposed in:
+    #       Hapfelmeier, A., & Ulm, K. (2014). Variable selection by Random Forests using data with missing values.
+    #         Computational Statistics and Data Analysis, 80, 129–139. https://doi.org/10.1016/j.csda.2014.06.017
+    # --- when vitype='auc' and vimissing=False, then calculation is made as proprosed in:
+    #       Janitza, S., Strobl, C., & Boulesteix, A.-L. (2012). 
+    #       An AUC-based Permutation Variable Importance Measure for Random Forests. 
+    #           Retrieved from http://www.stat.uni-muenchen.de
+    # --- when vitype='auc' and vimissing=True, then calculation is made by joining the two methods above
     def variable_importance(self,vitype='err',vimissing=True,y=None):
 
         if(y is None):
