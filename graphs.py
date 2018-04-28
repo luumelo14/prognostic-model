@@ -1,5 +1,4 @@
-# this script was used to generate the graphs for my master's dissertation, with excpetion of the pie plots (fig 4.1 and fig 4.4),
-# which was generated through this website: https://nces.ed.gov/nceskids/createagraph/ 
+# this script was used to generate the graphs for my master's dissertation
 
 import matplotlib.pyplot as plt
 import read
@@ -77,7 +76,7 @@ def plot_event():
     #plt.width = width
     plt.show()
 
-def calculate_followup_return_period():
+def plot_followup_return_period():
 
     data_path = '~/Faculdade/Mestrado/Projeto/scripts/Working Scripts/'
     data_path = data_path + 'EXPERIMENT_DOWNLOAD/Group_patients-with-brachial-plexus-injury/Per_questionnaire_data/'
@@ -97,7 +96,93 @@ def calculate_followup_return_period():
 
     for k in patients_considered.keys():
         patients_considered[k] = int(patients_considered[k]/30)
-    print(sorted(Counter(patients_considered.values()).items(),key=lambda x: x[0]))
+    values = (sorted(Counter(patients_considered.values()).items(),key=lambda x: x[0]))
+    time_groups = [0,0,0,0,0,0,0]
+    for time,frequency in values:
+        if(time <= 6):
+            time_groups[6] += frequency
+        elif(time <= 12):
+            time_groups[5] += frequency
+        elif(time <= 18):
+            time_groups[4] += frequency
+        elif(time <= 24):
+            time_groups[3] += frequency
+        elif(time <= 30):
+            time_groups[2] += frequency
+        elif(time <= 36):
+            time_groups[1] += frequency
+        else:
+            time_groups[0] += frequency 
+    labels = ['37 meses ou mais','31 a 36 meses','25 a 30 meses','19 a 24 meses','13 a 18 meses','7 a 12 meses','0 a 6 meses']
+    plt.pie(time_groups,colors=['lightcoral', 'yellowgreen', 'gold','blueviolet','violet','peru','lightskyblue'][::-1],
+    labels=labels,autopct='%1.1f%%',startangle=90) #,'gold'],)
+    plt.axis('equal')
+    plt.show()
+
+def plot_surgery_period():
+
+    data_path = '~/Faculdade/Mestrado/Projeto/scripts/Working Scripts/'
+    data_path = data_path + 'EXPERIMENT_DOWNLOAD/Group_patients-with-brachial-plexus-injury/Per_questionnaire_data/'
+    data_path = data_path + 'Q61802_unified-surgical-evaluation/Responses_Q61802.csv'
+    #data_path = data_path + 'Q92510_unified-follow-up-assessment/Responses_Q92510.csv'
+
+    data = pd.read_csv(data_path, header=0, delimiter=",",
+            na_values=['N/A', 'None','nan','NAAI','NINA'], quoting=0, encoding='utf8', mangle_dupe_cols=False)
+
+    patients_considered = {}
+    for i,row in data.iterrows():
+        if(row['participant code']) not in patients_considered:
+            patients_considered[row['participant code']] = row['formTempoCirurg']
+        else:
+            if(row['formTempoCirurg'] < patients_considered[row['participant code']]):
+                patients_considered[row['participant code']] = row['formTempoCirurg']
+
+    for k in patients_considered.keys():
+        patients_considered[k] = int(patients_considered[k]/30)
+    values = (sorted(Counter(patients_considered.values()).items(),key=lambda x: x[0]))
+    time_groups = [0,0,0]
+    for time,frequency in values:
+        if(time <= 6):
+            time_groups[0] += frequency
+        elif(time <= 12):
+            time_groups[1] += frequency
+        else:
+            time_groups[2] += frequency
+    labels = ['0 a 6 meses', '7 a 12 meses', '13 meses ou mais']
+    plt.pie(time_groups,colors=['lightskyblue', 'yellowgreen', 'lightcoral'],labels=labels,autopct='%1.1f%%') #,'gold'],)
+    plt.axis('equal')
+    plt.show()
+
+def plot_ages():
+    data_path = '~/Faculdade/Mestrado/Projeto/scripts/Working Scripts/'
+    data_path = data_path + 'EXPERIMENT_DOWNLOAD/Group_patients-with-brachial-plexus-injury/Per_questionnaire_data/'
+    #data_path = data_path + 'Q61802_unified-surgical-evaluation/Responses_Q61802.csv'
+    #data_path = data_path + 'Q92510_unified-follow-up-assessment/Responses_Q92510.csv'
+    data_path = data_path + 'Q44071_unified-admission-assessment/Responses_Q44071.csv'
+
+    data = pd.read_csv(data_path, header=0, delimiter=",",
+            na_values=['N/A', 'None','nan','NAAI','NINA'], quoting=0, encoding='utf8', mangle_dupe_cols=False)
+
+    age_groups = [0,0,0,0]
+    for age in data['formIdadeLesao']:
+        if(age <= 30):
+            age_groups[0] += 1
+        elif(age <= 45):
+            age_groups[1] += 1
+        elif(age <= 60):
+            age_groups[2] += 1
+        else:
+            age_groups[3] += 1
+    labels = ['15 a 30 anos', '31 a 45 anos', '45 a 60 anos', '61 anos ou mais']
+    fig,ax = plt.subplots()
+    ax.pie(age_groups,colors=['lightskyblue', 'yellowgreen','gold','lightcoral'],labels=labels,autopct='%1.1f%%',
+    startangle=90,labeldistance=1.05,pctdistance=0.5) #,'gold'],)
+    centre_circle = plt.Circle((0,0),0.65,fc='white')
+    fig = plt.gcf()
+    fig.gca().add_artist(centre_circle)
+    plt.axis('equal')
+    plt.tight_layout()
+    plt.show()
 
 def calculate_mean_followup_return_period():
     data_path = '~/Faculdade/Mestrado/Projeto/scripts/Working Scripts/'
@@ -269,7 +354,9 @@ def plot_followup_movements():
 
 #plot_side_distribution()
 #plot_event()
-#calculate_followup_return_period()
+#plot_followup_return_period()
+plot_ages()
 #plot_followup_pain()
-plot_followup_movements()
+#plot_followup_movements()
+#plot_surgery_period()
 #calculate_mean_followup_return_period()
