@@ -6,8 +6,8 @@ from collections import Counter
 import matplotlib.pyplot as plt
 import math
 import utils
-
-
+import matplotlib.patches as mpatches
+import matplotlib.lines as mlines
 
 
 def boxplot(collections,attributes,title=None):
@@ -23,6 +23,21 @@ def boxplot(collections,attributes,title=None):
         plt.savefig('boxplot_'+title+'.png')
         plt.close()
 
+    plt.show()
+
+def plot_feature_importance_vs_accuracy(xvalues,yvalues,xlabel='threshold',title=None,special=None):
+    ax = plt.subplot(111)    
+    ax.scatter(xvalues,yvalues,marker='x',s=60)
+    if(special is not None):
+        ax.scatter(xvalues[special],yvalues[special],marker='x',s=60,color='red',linewidths=3)
+
+    plt.xlabel(xlabel)
+    plt.ylabel('oob error')
+ 
+    if(title):
+        plt.title(title)
+        plt.savefig('scatter_plot_'+title+'.png')
+        plt.close()
     plt.show()
 
 def plot_mean_feature_contribution(clf,attributes):
@@ -64,13 +79,12 @@ def plot_mean_feature_contribution(clf,attributes):
     ax = plt.axes()
     ax.set_xticklabels(attributes[sorted(pos_feature_contributions.keys())])
     ax.set_xticks(np.array(pos) +  (width / 2))
-    #ax.set_xticklabels([round(i[0],2) for i in k])
-    #ax.set_yticks(range(0,50,5))
+
     plt.show()
 
     
 
-def iter_plot_feature_contribution(clf,attributes):
+def iter_plot_feature_contribution(clf,attributes,dif_surgery=False):
     try:
         class_of_interest = clf.control_class
     except(AttributeError):
@@ -92,16 +106,163 @@ def iter_plot_feature_contribution(clf,attributes):
         if(feature_name == '\q'):
             break
         try:
-            feature_index = np.where(attributes == feature_name)[0][0]
+            print(attributes[:-1])
+            print( np.where(attributes[:-1] == feature_name))
+            feature_index = np.where(attributes[:-1] == feature_name)[0][0]
             f = 1
         except(IndexError):
             print('Feature %r could not be found.' % (feature_name))
             print('List of possible features:')
-            for attribute in attributes:
+            for attribute in attributes[:-1]:
                 print(attribute)
         if(f == 1):
-            plot_feature_contributions(clf.X,feature_index,fcs,attributes,class_of_interest)
+            if(dif_surgery):
+                plot_feature_contributions_surgery_class(clf.X,clf.y,feature_index,fcs,attributes,class_of_interest)
+            else:
+                plot_feature_contributions(clf.X,feature_index,fcs,attributes,class_of_interest)
 
+
+def plot_feature_contributions_surgery_class(X,y,feature_index,fcs,attributes,class_of_interest,title=None):
+    surgery_index = np.where(attributes == 'Q44071_snCplexoAt')[0][0]
+
+    if(not utils.isint(X[utils.firstNotNan(X[:,feature_index])][feature_index]) and not utils.isfloat(X[utils.firstNotNan(X[:,feature_index])][feature_index])):
+        values = [i for i in set(X[:,feature_index]) if not utils.isnan(i)] + [np.nan]
+
+        x_surgery  = []
+        surgery_colors = []
+        x_no_surgery = []
+        no_surgery_colors = []
+        x_nan = []
+        nan_colors = []
+        y_surgery = []
+        y_no_surgery = []
+        y_nan = []
+
+        contributions = {}
+
+        for i in range(X.shape[0]):
+            
+            if(feature_index in fcs[i].keys()):
+            
+                if(X[i][surgery_index] == 'S' or X[i][surgery_index] == 'Y'):
+                    x_surgery.append(fcs[i][feature_index][class_of_interest])
+                    y_surgery.append(values.index(X[i][feature_index]))
+                    if(y[i] == class_of_interest):
+                        surgery_colors.append('blue')
+                    else:
+                        surgery_colors.append('red')
+
+                elif(utils.isnan(X[i][surgery_index])):
+                    x_nan.append(fcs[i][feature_index][class_of_interest])
+                    #this is necessary because of weird behavior when X[i][feature_index] is nan
+                    #and for some reason it says that nan is not values
+                    y_nan.append(len(values)-1)
+                    if(y[i] == class_of_interest):
+                        nan_colors.append('blue')
+                    else:
+                        nan_colors.append('red')
+                else:
+                    x_no_surgery.append(fcs[i][feature_index][class_of_interest])
+                    y_no_surgery.append(values.index(X[i][feature_index]))
+                    if(y[i] == class_of_interest):
+                        no_surgery_colors.append('blue')
+                    else:
+                        no_surgery_colors.append('red')
+
+                # if(X[i][feature_index] not in contributions.keys()):
+                #     contributions[X[i][feature_index]] = [fcs[i][feature_index][class_of_interest]]
+                # else:
+                #     contributions[X[i][feature_index]].append(fcs[i][feature_index][class_of_interest])
+        coi = str(class_of_interest)
+        ax = plt.subplot(111)    
+        ax.scatter(x_surgery,y_surgery,marker='o',s=60,edgecolors=surgery_colors,facecolors='none')
+        ax.scatter(x_no_surgery,y_no_surgery,marker='x',s=60,edgecolors=no_surgery_colors,facecolors='none')
+        ax.scatter(x_nan,y_nan,marker='d',s=60,edgecolors=nan_colors,facecolors='none')
+        plt.xlabel('feature contribution')
+        plt.ylabel('values of feature %r' % attributes[feature_index])
+        ax.set_yticks(np.array(range(len(values)+2))-1)
+        ax.set_yticklabels([str('')]+values+[str('')])
+        red_patch = mpatches.Patch(color='red')
+        blue_patch = mpatches.Patch(color='blue')
+        xmarker = mlines.Line2D([], [], color='black', marker='x', markersize=10, linestyle='None')
+        omarker = mlines.Line2D([], [], color='black', marker='o', markersize=10, linestyle='None',
+            markerfacecolor='None',markeredgecolor='black')
+        #plt.legend(handles=[red_patch,blue_patch])
+
+        plt.legend([red_patch,blue_patch,xmarker,omarker],['Classe da instância ≠ '+ coi,
+            'Classe da instância = '+coi,'Não passou por cirurgia','Passou por cirurgia'],numpoints=1,fontsize='small')
+        plt.show()
+
+    else:
+
+        values = sorted([round(i,4) for i in (set(X[:,feature_index])) if not utils.isnan(i)])# + [np.nan]
+        print(values)
+        nan_index = values[-1]-values[-2]
+        x_surgery  = []
+        surgery_colors = []
+        x_no_surgery = []
+        no_surgery_colors = []
+        x_nan = []
+        nan_colors = []
+        y_surgery = []
+        y_no_surgery = []
+        y_nan = []
+
+        for i in range(X.shape[0]):
+            if(feature_index in fcs[i].keys()):
+                if(X[i][surgery_index] == 'S' or X[i][surgery_index] == 'Y'):
+                    x_surgery.append(fcs[i][feature_index][class_of_interest])
+                    y_surgery.append((X[i][feature_index]))
+                    if(y[i] == class_of_interest):
+                        surgery_colors.append('blue')
+                    else:
+                        surgery_colors.append('red')
+                elif(utils.isnan(X[i][surgery_index])):
+                    x_nan.append(fcs[i][feature_index][class_of_interest])
+                    #this is necessary because of weird behavior when X[i][feature_index] is nan
+                    #and for some reason it says that nan is not values
+                    y_nan.append(values[-1]+nan_index)
+                    if(y[i] == class_of_interest):
+                        nan_colors.append('blue')
+                    else:
+                        nan_colors.append('red')
+                else:
+                    x_no_surgery.append(fcs[i][feature_index][class_of_interest])
+                    y_no_surgery.append((X[i][feature_index]))
+                    if(y[i] == class_of_interest):
+                        no_surgery_colors.append('blue')
+                    else:
+                        no_surgery_colors.append('red')
+        coi = str(class_of_interest)                       
+        fig,ax = plt.subplots()    
+        ax.scatter(x_surgery,y_surgery,marker='o',s=60,facecolors='none',edgecolors=surgery_colors)
+        ax.scatter(x_no_surgery,y_no_surgery,marker='x',s=60,edgecolors=no_surgery_colors)
+        ax.scatter(x_nan,y_nan,marker='d',s=60,facecolors='none',edgecolors=nan_colors)
+        fig.canvas.draw()
+        labels =  ['']+[item.get_text() for item in ax.get_yticklabels()]+['']  
+        if(values[-1]+nan_index < ax.get_yticks()[-1]):
+            plt.yticks([values[0]-nan_index]+sorted(list(ax.get_yticks())+[values[-1]+nan_index]))       
+        else:
+            plt.yticks([values[0]-nan_index]+sorted(list(ax.get_yticks())+[values[-1]+nan_index,values[-1]+2*nan_index]))
+        labels[-2] = 'nan'
+
+        plt.xlabel('feature contribution')
+        plt.ylabel('values of feature %r' % attributes[feature_index])
+        ax.set_yticklabels(labels)
+        red_patch = mpatches.Patch(color='red')
+        blue_patch = mpatches.Patch(color='blue')
+        xmarker = mlines.Line2D([], [], color='black', marker='x', markersize=10, label='Bla', linestyle='None')
+        omarker = mlines.Line2D([], [], color='black', marker='o', markersize=10,label='Bla', linestyle='None',
+            markerfacecolor='None',markeredgecolor='black')
+        #plt.legend(handles=[red_patch,blue_patch])
+
+        plt.legend([red_patch,blue_patch,xmarker,omarker],['Classe da instância ≠ '+ coi,
+            'Classe da instância = '+coi,'Não passou por cirurgia','Passou por cirurgia'],numpoints=1,fontsize='small')
+        plt.show()
+    
+    if(title is not None):        
+        plt.savefig(title)
+        plt.close()    
 
 def plot_feature_contributions(X,feature_index,fcs,attributes,class_of_interest,title=None):
     
@@ -167,11 +328,7 @@ def plot_feature_contributions(X,feature_index,fcs,attributes,class_of_interest,
     else:
 
         values = sorted([round(i,4) for i in (set(X[:,feature_index])) if not utils.isnan(i)])# + [np.nan]
-        # print(X[:,feature_index])
-        # print(feature_index)
-        # print(attributes[feature_index])
-        # print(max((values)))
-        # print(max(X[:,feature_index]))
+
         nan_index = values[-1]-values[-2]
         pos_fcs = []
         neg_fcs = []
@@ -231,21 +388,7 @@ def plot_feature_contributions(X,feature_index,fcs,attributes,class_of_interest,
         else:
             plt.yticks([values[0]-nan_index]+sorted(list(ax.get_yticks())+[values[-1]+nan_index,values[-1]+2*nan_index]))
         labels[-2] = 'nan'
-        # if (ax.get_yticks()[-1] > values[-1]+nan_index):
-        #     labels[-2] = 'nan'    
-        # else:
-        #     labels[-1]= 'nan'
 
-        #print(labels)
-        
-        #labels[-1] = 'nan'
-        #print(labels)
-        #ax.ylim=[values[0]-nan_index,values[-1]+nan_index]
-        #ax.set_yticks(np.array(range(len(values)+2))-1)
-        #x1,x2,y1,y2 = plt.axis()
-        #plt.margins(x=0.1,y=0.1)
-        #ax.set_ylim([values[0]-nan_index,values[1]+2*nan_index])
-        #ax.set_yticklabels(['nan'],minor=True)
         plt.xlabel('feature contribution')
         plt.ylabel('values of feature %r' % attributes[feature_index])
         ax.set_yticklabels(labels)
@@ -267,13 +410,11 @@ def plot_randomforest_accuracy_nfeatures(X,y,original_attributes,features,ntrees
     accuracy.append(1-clf.oob_error_)
     for i in range(1,nfeatures):
         print('eliminating feature %r...' % original_attributes[features[-i]])
-        #print('eliminating feature %r...' % original_attributes[features[i]])
         seed = np.random.randint(0,10000)
         clf = rf.RandomForest(ntrees=ntrees,mtry=mtry,missing_branch=missing_branch,prob_answer=False,max_depth=max_depth,replace=replace,random_state=seed)
         clf.fit(X[:,features[:-i]],y)
-        #print(features[:-i])
+
         nf.append(i) 
-        #nf.append(i)
         accuracy.append(1-clf.oob_error_)
 
     plt.plot(nf,accuracy,'bo',color='blue')
@@ -314,34 +455,18 @@ def plot_randomforest_accuracy(X,y,attributes,ntrees,replace,mtry,max_depth,miss
     missing_branch_dict = {}
     missing_c45 = []
     seeds = []
-    for i in range(ntimes):
-    #for seed in range(0,1000,50):
-        seed = np.random.randint(100000)
+    #for i in range(ntimes):
+    for seed in range(0,1000,50):
+        #seed = np.random.randint(100000)
         print('seed: %r' % seed)
         clf = rf.RandomForest(ntrees=ntrees,mtry=mtry,missing_branch=missing_branch,prob_answer=False,max_depth=max_depth,replace=replace,random_state=seed)
         clf.fit(X,y)
 
-        #clf2 = rf.RandomForest(ntrees=ntrees,mtry=mtry,variable_importance=True,missing_branch=missing_branch,prob_answer=False,max_depth=max_depth,replace=replace,random_state=seed+1)
-        #clf2.fit(X[:,[a[0] for a in clf.variable_importance_ if a[1] > 0]],y)
-
-    #print('Acurácia oob RF Anatoli:')
         if round(1-clf.oob_error_,2) not in missing_branch_dict.keys():
             missing_branch_dict[round(1-clf.oob_error_,2)] = 1
         else:
             missing_branch_dict[round(1-clf.oob_error_,2)] += 1
-        #missing_branch.append(1-clf.oob_error_)
-#clf.forest[0].to_dot(attributes,out='foresttree0.dot')
-
-        #clf = rf.RandomForest(ntrees=50,mtry=math.sqrt,missing_branch=False,prob_answer=True,max_depth=3,replace=False,random_state=seed)
-        #clf.fit(X[:,:-3],y)
-
-        #missing_c45.append(1-clf.oob_error_)
-
-        #seeds.append(seed)
-        #return clf
-    #plt.plot(missing_c45,missing_branch,'x',color='blue')
-    #plt.plot(seeds,missing_c45,'x',color='blue')
-    #plt.bar(range(len(missing_branch)),missing_branch)
+ 
 
     k = sorted(missing_branch_dict.items(),key=lambda x: x[0])
     plt.bar(range(len([i[0] for i in k])),[i[1] for i in k])
@@ -351,14 +476,9 @@ def plot_randomforest_accuracy(X,y,attributes,ntrees,replace,mtry,max_depth,miss
     ax.set_xticks(pos +  (width / 2))
     ax.set_xticklabels([round(i[0],2) for i in k])
     ax.set_yticks(range(0,50,5))
-    #plt.axis([0,1,0,70])
-    #plt.axis([-0.25,4,-0.25,1])
-    #plt.axis([-0.25,1,-0.25,1])
-    #plt.xlabel('missing_c45')
-   # plt.xlabel('teste b) acurácia C4.5')
+
     plt.xlabel('acurácia com missing branch = ' + str(missing_branch) )
-    #plt.xlabel('information gain and gain ratio mixed')
-    #plt.xlabel('gini')
+
     if(title is not None):
         plt.title(title)
     plt.ylabel('frequência')
@@ -375,14 +495,9 @@ def plot_randomforest_seed(X,y,attributes):
 
         clf = rf.RandomForest(ntrees=300,mtry=math.sqrt,missing_branch=True,prob_answer=False,max_depth=4,replace=False,random_state=seed)
         clf.fit(X,y)
-    #print('Acurácia oob RF Anatoli:')
-        #if 1-clf.oob_error_ not in missing_branch.keys():
-        #    missing_branch[1-clf.oob_error_] = 1
-        #else:
-        #    missing_branch[1-clf.oob_error_] += 1
+
         missing_branch.append(1-clf.oob_error_)
         print(1-clf.oob_error_)
-#clf.forest[0].to_dot(attributes,out='foresttree0.dot')
 
         clf2 = rf.RandomForest(ntrees=300,mtry=math.sqrt,missing_branch=False,prob_answer=False,max_depth=4,replace=False,random_state=seed)
         clf2.fit(X,y)
@@ -392,30 +507,8 @@ def plot_randomforest_seed(X,y,attributes):
 
         seeds.append(seed)
 
-    clf.forest[14].to_dot(attributes,'out.dot')
-    clf2.forest[14].to_dot(attributes,'out2.dot')
-    clf.forest[0].to_dot(attributes,'out3.dot')
+
     plt.plot(missing_c45,missing_branch,'x',color='blue')
-
-    #plt.plot(seeds,missing_c45,'x',color='blue')
-    #plt.bar(range(len(missing_branch)),missing_branch)
-    #k = sorted(missing_branch.items(),key=lambda x: x[0])
-    #plt.bar(range(len([i[0] for i in k])),[i[1] for i in k])
-    #pos = np.arange(len(k))
-    #width = 1.0     # gives histogram aspect to the bar diagram
-    #ax = plt.axes()
-    #ax.set_xticks(pos + (width / 2))
-    #ax.set_xticklabels([i[0] for i in k])
-    #plt.axis([-0.25,1.25,-0.25,1])
-    #plt.axis([-0.25,4,-0.25,1])
-    #plt.axis([-0.25,1,-0.25,1])
-    #plt.xlabel('missing_c45')
-    #plt.xlabel('information gain')
-    #plt.xlabel('gain ratio')
-    #plt.xlabel('information gain and gain ratio mixed')
-    #plt.xlabel('gini')
-    #plt.ylabel('missing_branch')
-
     plt.show()
 
 
@@ -440,7 +533,7 @@ def plot_entropy_pmissing(X,y,attributes):
         Xtmp = (X[not_nan_rows,:])
         ytmp = y[not_nan_rows]
 
-       # if(isnum(X[firstNotNan((X[:,feature_index])),feature_index])):
+
         if(isnum(Xtmp[0,feature_index])):
             values = (set(Xtmp[:, feature_index]))
             values.discard(np.nan)
@@ -448,20 +541,14 @@ def plot_entropy_pmissing(X,y,attributes):
             for j in range(len(values) - 1):
                 value = (values[j] + values[j+1])/2
                 [X_true,X_false], [y_true, y_false], [t,f] = split_num(Xtmp, ytmp, feature_index, value)#threshold)
-                #entrpy = gini(ytmp,[y_true,y_false])
-                #entrpy = information_gain(ytmp, [y_true, y_false])
-                #entrpy = gain_ratio(ytmp, [y_true,y_false])
+
                 entrpy = (entropy(y_true)+entropy(y_false)) / 2
-                # if(entrpy == 0):
-                #     print(attributes[feature_index])
+
                 if entrpy < best_entrpy:
-                #if entrpy > best_entrpy:
-                    #gr = gain_ratio(ytmp, [y_true,y_false])
-                    #if(gr > best_entrpy):
-                    #    best_entrpy = gr
+
                     best_entrpy = entrpy
                     best_feature = feature_index
-                    #print(value)
+
                     best_value = [value]
 
         else:       
@@ -472,16 +559,9 @@ def plot_entropy_pmissing(X,y,attributes):
             Xs,ys,d = split_categ(Xtmp, ytmp,feature_index,values)
 
             entrpy = sum(list(entropy(k) for k in ys)) / len(values)
-            #entrpy = information_gain(ytmp,ys)
-            #entrpy = gini(ytmp,ys)
-            #entrpy = gain_ratio(ytmp,ys)
-            # if(entrpy == 0):
-            #     print(attributes[feature_index])
+
             if entrpy < best_entrpy:
-            #if entrpy > best_entrpy:
-                #gr = gain_ratio(ytmp, ys)
-                #if(gr > best_entrpy):
-                #    best_entrpy = gr
+
                 best_entrpy = entrpy
                 best_feature = feature_index
                 best_value = values
@@ -502,24 +582,13 @@ def plot_entropy_pmissing(X,y,attributes):
 
 
     plt.axis([-0.25,1.25,-0.25,1])
-    #plt.axis([-0.25,4,-0.25,1])
-    #plt.axis([-0.25,1,-0.25,1])
+
     plt.xlabel('entropy')
-    #plt.xlabel('information gain')
-    #plt.xlabel('gain ratio')
-    #plt.xlabel('information gain and gain ratio mixed')
-    #plt.xlabel('gini')
     plt.ylabel('pmissing')
 
     for i in range(len(pmissingsc)):
         if(pmissingsc[i] < 0.5):
             if(entropsc[i] < 0.2):
                 print(attributes[i])
-    #     if(np.isclose(pmissings[i],0,atol=0.1)):
-    #         print(features[i] + ':')
-    #         print(entrops[i])
-    # for i in range(len(pmissingsc)):
-    #     if(np.isclose(pmissingsc[i], 0.4,atol=0.01)):
-    #         if(np.isclose(entropsc[i],0.9,atol=0.05)):
-    #             print(featuresc[i]) 
+
     plt.show()
