@@ -19,108 +19,65 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import StratifiedShuffleSplit, train_test_split
 from sklearn.linear_model import LogisticRegression, SGDClassifier, LinearRegression
 from sklearn.neural_network import MLPClassifier
-#from sklearn.feature_selection import SelectKBest, SelectFromModel
-#from sklearn.feature_selection import chi2, f_classif,mutual_info_classif
-#from sklearn.model_selection import GridSearchCV
+import pickle
 
-from sklearn.pipeline import Pipeline
-import milk.supervised.adaboost
-
-def backwardFeatureElimination(X,y,attributes,ntrees,replace,mtry,max_depth,missing_branch,ntimes=25,rate=0.2):
-
-    #clf.fit(X[:,sorted(f, key=lambda k: np.median(f[k]),reverse=True)],y)
-    features = range((X.shape[1]))
-    #best_error = float('inf')
-    #best_clf = None
-    seed = 42
-    oob_errors = []
-    #set_of_models = []
-    set_of_features = []
+# this method is based on the algorithm proposed in:
+# Robin Genuer, Jean-Michel Poggi, and Christine Tuleau-Malot. 2010. 
+# Variable selection using random forests. Pattern Recogn. Lett. 31, 14 (October 2010), 2225-2236. 
+# DOI=http://dx.doi.org/10.1016/j.patrec.2010.03.014  
+def feature_selection_threshold(X,y,attributes,ntrees,replace,mtry,max_depth,missing_branch,ntimes=25,title=None,missing_rate=False):
+    vis =  average_varimp(X,y,attributes,ntrees,replace,mtry,max_depth,missing_branch,missing_rate=missing_rate,
+        ntimes=ntimes,select=False,mean=True)
+    ordered_features = [a[0] for a in vis]
+    thresholds = [round(a[1],10) for a in vis]
+    threshold_values = sorted([round(a,10) for a in set(thresholds)],reverse=True)
+    print([(attributes[a[0]],a[1]) for a in vis])
+    stop_indexes = []
+    #print(attributes[all_features])
     scores = []
-        # clf = rf.RandomForest(ntrees=6000,oob_error=True,random_state=seed,mtry=math.sqrt,missing_branch=True,prob_answer=False,max_depth=4,replace=False)
-        # clf.fit(X,y)
-        # important_variables =  [a[0] for a in clf.variable_importance_] 
-    print('calculating important variables...')
-    important_variables = average_varimp(X,y,ntrees,replace,mtry,max_depth,missing_branch,ntimes=25,cutpoint=-0.000001)
-    features = important_variables
-    while(len(features) > 1):
-        seed = np.random.randint(0,10000)
-        clf = rf.RandomForest(ntrees=ntrees,oob_error=True,random_state=seed,mtry=mtry,missing_branch=missing_branch,prob_answer=False,max_depth=max_depth,replace=replace)
-        clf.fit(X[:,features],y)
+    stop_index = 0
+    for threshold in threshold_values:
+        s_index = stop_index+1
+        while s_index < len(thresholds):
+            if(threshold > thresholds[s_index]):
+                break
+            else:
+                s_index+=1
+        stop_index = s_index
 
-        oob_errors.append((1-clf.oob_error_))
-        scores.append(1-clf.oob_error_+ clf.dif)  
-        set_of_features.append(features)
-        #set_of_models.append(clf)
-        # if(oob_error <= best_error):
-        #     if(oob_error == best_error):
-        #         if(len(features) < len(best_features)):
-        #             best_error = oob_error
-        #             best_features = features
-        #             best_clf = clf
-        #     else:
-        #         best_error = oob_error
-        #         best_features = features
-        #         best_clf = clf
-
-  #      important_variables =  [a[0] for a in clf.variable_importance_] 
-        features = important_variables[0:round((1-rate)*len(features))-1]
-        print('len features: %r' % len(features))
-
-    print('Best oob errors:')
-    for index in np.where(np.array(scores) == max(scores))[0]:
-        print(scores[index])
-        print('Features:')
-        print(attributes[(set_of_features[index])])
-        print(oob_errors[index])
-    
-    print('Best 1 s.e. set of features:')
-
-    std = np.std(scores)
-    index = (np.abs(np.array(scores)-(max(scores)-std))).argmin()
-    print(scores[index])
-    print('Features:')
-    print(attributes[set_of_features[index]])
-    print(oob_errors[index])
-
-    #print('Best set of features: %r' % original_attributes[best_features])
-
-    #return best_features
-    #boostrap_error(set_of_models[index],X[:,set_of_features[index]],y)
-
-def feature_selection(X,y,attributes,ntrees,replace,mtry,max_depth,missing_branch,ntimes=25):
-    
-    all_features = average_varimp(X,y,ntrees,replace,mtry,max_depth,missing_branch,ntimes=25)
-    print(attributes[all_features])
-    scores = []
-    for stop_index in range(1,len(all_features)):
-        features = all_features[0:stop_index]
+        features = ordered_features[0:stop_index]
         seed = np.random.randint(0,10000)
         clf = rf.RandomForest(ntrees=ntrees,oob_error=True,random_state=seed,mtry=mtry,
             missing_branch=missing_branch,prob_answer=False,max_depth=max_depth,replace=replace,balance=True)
         clf.fit(X[:,features],y)
         scores.append(1-clf.oob_error_)
+        stop_indexes.append(stop_index)
     
     print('Best oob errors:')
     for old_index in np.where(np.array(scores) == max(scores))[0]:
-        print('Features:')
-        print((attributes[all_features[0:old_index+1]]))
+        #print('Features:')
+        #print((attributes[ordered_features[0:len(ordered_features)-old_index]]))
         print(scores[old_index])
 
     print('Best 1 s.e. set of features:')
     std = np.std(scores)
-    index = (np.abs(np.array(scores)-(max(scores)-std))).argmin()
-    print('Features:')
-    print(attributes[all_features[0:index+1]])
-    print(scores[index])
+    indexes= np.where(np.array(scores) == scores[((np.abs(np.array(scores)-(max(scores)-std))).argmin())])[0]
+    index = max(indexes,key=lambda x: stop_indexes[x])
+    #print('Features:')
+    #print(attributes[ordered_features[0:len(ordered_features)-index]])
 
     seed = np.random.randint(0,10000)
     clf = rf.RandomForest(ntrees=ntrees,oob_error=True,random_state=seed,mtry=mtry,
             missing_branch=missing_branch,prob_answer=False,max_depth=max_depth,replace=replace,balance=True)
-    clf.fit(X[:,all_features[0:old_index+1]],y)
+
+    clf.attributes = attributes[ordered_features[0:stop_indexes[index]]]
+    clf.fit(X[:,ordered_features[0:stop_indexes[index]]],y)
     print('OOB ERROR: %r' % (1-clf.oob_error_))
 
-
+    print('threshold: >= %r' % threshold_values[index])
+    plot.plot_feature_importance_vs_accuracy(threshold_values,scores,xlabel='threshold',title=title,special=index)
+    
+    return clf
 def boostrap_error(clf,X,y,weight=0.632):
     n_samples = X.shape[0]
     training_error = 1-clf.score(X,y)
@@ -166,7 +123,8 @@ def plot_boxplot(X,y,attributes,ntrees,replace,mtry,max_depth,missing_branch,nti
 
 
 
-def average_varimp(X,y,attributes,ntrees,replace,mtry,max_depth,missing_branch,vitype='err',ntimes=25,select=True,printvi=False,plotvi=False,cutpoint=0.0,mean=False,title=None):
+def average_varimp(X,y,attributes,ntrees,replace,mtry,max_depth,missing_branch,vitype='err',ntimes=25,
+    select=True,printvi=False,plotvi=False,cutpoint=0.0,mean=False,title=None, missing_rate=False):
     vi = {a: [] for a in range(X.shape[1])}
     for i in range(ntimes):
         seed = np.random.randint(0,10000)
@@ -176,7 +134,10 @@ def average_varimp(X,y,attributes,ntrees,replace,mtry,max_depth,missing_branch,v
         varimps = clf.variable_importance(vitype=vitype,vimissing=True)
 
         for var in varimps.keys():
-            vi[var].append(varimps[var])
+            if(missing_rate):
+                vi[var].append(varimps[var] * utils.notNanProportion(X[:,var]))
+            else:
+                vi[var].append(varimps[var])
 
     vimean = {a: [] for a in range(X.shape[1])}
     for var in vi.keys():
@@ -397,31 +358,33 @@ def check_other_participants(filename):
             print(participant)
     print(len(p))
 
-# data_paths = [['Dor.csv','Q92510_snDorPos'],['Dor_reduzido.csv','Q92510_snDorPos'],
-# ['AbdOmbro.csv','Q92510_opcForca[AbdOmbro]'],['AbdOmbro_reduzido.csv','Q92510_opcForca[AbdOmbro]'],
-# ['FlexCotovelo.csv','Q92510_opcForca[FlexCotovelo]'],['FlexCotovelo_reduzido.csv','Q92510_opcForca[FlexCotovelo]'],
-# ['RotEOmbro.csv','Q92510_opcForca[RotEOmbro]'],['RotEOmbro_reduzido.csv','Q92510_opcForca[RotEOmbro]']]
+data_paths = [['DorCirurgiaCategNA.csv','Q92510_snDorPos'],['DorCirurgiaCategNAReduzido.csv','Q92510_snDorPos'],
+['AbdOmbroCirurgiaCategNA.csv','Q92510_opcForca[AbdOmbro]'],['AbdOmbroCategNAReduzido.csv','Q92510_opcForca[AbdOmbro]'],
+['FlexCotoveloCategNA.csv','Q92510_opcForca[FlexCotovelo]'],['FlexCotoveloCirurgiaCategNAReduzido.csv','Q92510_opcForca[FlexCotovelo]'],
+['RotEOmbroCirurgiaCategNA.csv','Q92510_opcForca[RotEOmbro]'],['RotEOmbroCirurgiaCategNAReduzido.csv','Q92510_opcForca[RotEOmbro]']]
 #data_path='Dor.csv'
 #data_paths = ['DorCirurgiaPrePosCateg.csv','DorCirurgiaPrePos.csv','DorPrePosCateg.csv','Dor.csv']
 #data_path = 'DorCirurgiaPrePos.csv'
 #data_path = 'DorWithoutPrePost.csv'
-#data_path = 'Dor_reduzido.csv'
-data_path = 'DorCirurgiaCateg.csv'
-#data_path = 'DorCirurgia.csv'
-#data_path = 'AbdOmbroCirurgia.csv'
-#data_path = 'AbdOmbro_reduzido.csv'
+#data_path = 'Dados/Dor_reduzido.csv'
+#data_path = 'DorCirurgiaCateg.csv'
+#data_path = 'DorCirurgiaCategReduzido.csv'
+#data_path = 'DorCategReduzido'
+#data_path = 'DorCirurgiaReduzido.csv'
+#data_path = 'AbdOmbroCirurgiaCategReduzido.csv'
+#data_path = 'RotEOmbroReduzido.csv'
 #data_path = 'FlexCotoveloCirurgia.csv'
 #data_path = 'FlexCotovelo_reduzido.csv'
 #data_path = 'RotEOmbroCirurgia.csv'
 #data_path = 'RotEOmbro_reduzido.csv'
 class_questionnaire = 'Q92510'
-class_name = 'Q92510_snDorPos' 
+#class_name = 'Q92510_snDorPos' 
 #class_name = 'Q92510_opcForca[AbdOmbro]' 
 #class_name = 'Q92510_opcForca[FlexCotovelo]'
 #class_name = 'Q92510_opcForca[RotEOmbro]'
 
-missing_input= 'mean'#'mean'
-transform = True
+missing_input= 'none'#'mean'
+transform = False
 scale = True
 use_text = False
 dummy = False
@@ -429,38 +392,71 @@ use_feature_selection = False
 
 
 seed = 1994
-#for data_path,class_name in data_paths:
-data, original_attributes, categories  = read.readData(data_path = data_path, class_name = class_name, 
-    class_questionnaire = class_questionnaire, missing_input = missing_input, dummy = dummy,
-    transform_numeric = transform, use_text=use_text, skip_class_questionnaire=True)#skip_class_questionnaire=False)
+for data_path,class_name in data_paths:
+    data, original_attributes, categories  = read.readData(data_path = data_path, class_name = class_name, 
+        class_questionnaire = class_questionnaire, missing_input = missing_input, dummy = dummy,
+        transform_numeric = transform, use_text=use_text, skip_class_questionnaire=True)#skip_class_questionnaire=False)
 
-X = data[:,0:-1]
-print(X.shape)
-y = np.array(data[:,-1])
-# compare_models(X,y,class_name,transform=True,scale=True,n_splits=10,test_size=0.2,random_state=9,use_feature_selection=False)
-# exit()
-# import pickle
-# with open('prognostic_model_'+ class_name[7:] + '_' + data_path[:-4] + '.pickle', 'rb') as handle:
-#     clf = pickle.load(handle)
+    X = data[:,0:-1]
+    print(X.shape)
+    y = np.array(data[:,-1])
+
+    # compare_models(X,y,class_name,transform=True,scale=True,n_splits=10,test_size=0.2,random_state=9,use_feature_selection=False)
+    # exit()
+    # import pickle
+    # with open('prognostic_model_'+ class_name[7:] + '_' + data_path[:-4] + '.pickle', 'rb') as handle:
+    #     clf = pickle.load(handle)
 
 
-ntimes = 50
-ntrees = 501
-replace = False
-mtry = math.sqrt
-max_depth = None
-missing_branch = True
-    #seed =     89444   
-# import plot
-plot.plot_randomforest_accuracy(X,y,original_attributes,ntrees,replace,mtry,max_depth,missing_branch,ntimes,title=data_path+'mb=T e ntrees=15001')
-exit()
+    ntimes = 5
+    ntrees = 5
+    replace = False
+    mtry = math.sqrt
+    max_depth = None
+    missing_branch = True
+    seed =  89444   
+    # import plot
+    # plot.plot_randomforest_accuracy(X,y,original_attributes,ntrees,replace,mtry,max_depth,missing_branch,ntimes,title=data_path+'mb=T e ntrees=15001')
+    # exit()
 
-clf1 = rf.RandomForest(ntrees=ntrees,oob_error=True,random_state=seed,
-   mtry=mtry,missing_branch=missing_branch,prob_answer=False,max_depth=max_depth,replace=replace,balance=True)
-# print('Fitting random forest...')
-clf1.fit(X,y)
+    print('--------------- MODEL: %r DATA PATH: %r' % (class_name, data_path))
+    clf = feature_selection_threshold(X,y,original_attributes,ntrees,replace,mtry,max_depth,missing_branch,ntimes=ntimes,
+        missing_rate=True,title=None)
+    with open('prognostic_model_'+ '_' + data_path[:-4] + '_mrate=T_notapplicable=T'+'.pickle','wb') as handle:
+        pickle.dump(clf,handle)
+    # with open('prognostic_model_'+ '_' + data_path[:-4] + '.pickle', 'rb') as handle:
+    #     clf1 = pickle.load(handle)
 
-exit()
+    print(1-clf.oob_error_)
+    # exit()
+
+    # attributes = np.array(['Q44071_snDorPos', 'Q44071_opcLcSensor[C7]','Q44071_opcLcSensTatil[C6]','Q44071_opcForca[FlexDedos]','Q61802_opctransferencias[SQ003]',
+    # 'Q44071_lisLcLPB[C]','Q44071_opcLcSensor[C8]','Q44071_lisMedicAt[outros1_Nome]','Q44071_snFxPr', 'Q44071_opcLcSensTatil[C8]', 
+    # 'Q44071_opcLcSensTatil[T2]', 'Q44071_opcLcSensor[C6]', 'Q44071_snAuxilioAt', 'Q44071_snFxAt','Q44071_snCplexoAt'])#,'participant code'])
+
+    #  clf1 = rf.RandomForest(ntrees=ntrees,oob_error=True,random_state=seed,
+    #     mtry=mtry,missing_branch=missing_branch,prob_answer=False,max_depth=max_depth,replace=replace,balance=True)
+    # # # print('Fitting random forest...')
+    # attributes_indexes = np.array([np.where(original_attributes == a)[0][0] for a in attributes])
+    # Xn = X[:,attributes_indexes]
+    # ftc = np.where(original_attributes == 'Q61802_formTempoCirurg')[0][0]
+    # f = np.where(original_attributes == 'Q44071_snCplexoAt')
+    # for i in range(Xn.shape[0]):
+    #     if(not utils.isnan(X[i][ftc])):
+    #         if(X[i][f] == 'N'):
+    #             Xn[i][-1] = 'S'
+
+    # clf1.fit(Xn,y)
+    # print(1-clf1.oob_error_)
+    # if 'Dor' in class_name:
+    #     clf1.control_class = 'N'
+    # else:
+    #     clf1.control_class = 'SUCESSO'
+    # import plot
+
+    #plot.iter_plot_feature_contribution(clf1,attributes,dif_surgery=True)
+
+    exit()
 
 
 # clf1.forest[3].to_pdf(original_attributes,'out0.pdf')
@@ -485,10 +481,7 @@ vis = average_varimp(X,y,original_attributes,ntrees,replace,mtry,max_depth,missi
 
 clf2 = rf.RandomForest(ntrees=ntrees,oob_error=True,random_state=seed,
    mtry=mtry,missing_branch=missing_branch,prob_answer=False,max_depth=max_depth,replace=replace,balance=True)
-# if 'Dor' in class_name:
-#     clf2.control_class = 'N'
-# else:
-#     clf2.control_class = 'Sucesso'
+
 features = vis
 clf2.fit(X[:,features],y)
 
