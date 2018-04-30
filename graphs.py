@@ -1,4 +1,5 @@
-# this script was used to generate the graphs for my master's dissertation
+# this script was used to generate the graphs for my master's dissertation, with excpetion of the pie plots (fig 4.1 and fig 4.4),
+# which was generated through this website: https://nces.ed.gov/nceskids/createagraph/ 
 
 import matplotlib.pyplot as plt
 import read
@@ -8,6 +9,7 @@ import numpy as np
 from collections import Counter
 import re
 
+colors = ['forestgreen','gold','blue','firebrick','darkviolet','orangered','darkturquoise']
 def plot_side_distribution():
     data_path = '~/Faculdade/Mestrado/Projeto/scripts/Working Scripts/'
     data_path = data_path + 'EXPERIMENT_DOWNLOAD/Group_patients-with-brachial-plexus-injury/Per_questionnaire_data/'
@@ -114,7 +116,7 @@ def plot_followup_return_period():
         else:
             time_groups[0] += frequency 
     labels = ['37 meses ou mais','31 a 36 meses','25 a 30 meses','19 a 24 meses','13 a 18 meses','7 a 12 meses','0 a 6 meses']
-    plt.pie(time_groups,colors=['lightcoral', 'yellowgreen', 'gold','blueviolet','violet','peru','lightskyblue'][::-1],
+    plt.pie(time_groups,colors=colors[::-1],
     labels=labels,autopct='%1.1f%%',startangle=90) #,'gold'],)
     plt.axis('equal')
     plt.show()
@@ -149,7 +151,7 @@ def plot_surgery_period():
         else:
             time_groups[2] += frequency
     labels = ['0 a 6 meses', '7 a 12 meses', '13 meses ou mais']
-    plt.pie(time_groups,colors=['lightskyblue', 'yellowgreen', 'lightcoral'],labels=labels,autopct='%1.1f%%') #,'gold'],)
+    plt.pie(time_groups,colors=colors,labels=labels,autopct='%1.1f%%') #,'gold'],)
     plt.axis('equal')
     plt.show()
 
@@ -175,7 +177,7 @@ def plot_ages():
             age_groups[3] += 1
     labels = ['15 a 30 anos', '31 a 45 anos', '45 a 60 anos', '61 anos ou mais']
     fig,ax = plt.subplots()
-    ax.pie(age_groups,colors=['lightskyblue', 'yellowgreen','gold','lightcoral'],labels=labels,autopct='%1.1f%%',
+    ax.pie(age_groups,colors=colors,labels=labels,autopct='%1.1f%%',
     startangle=90,labeldistance=1.05,pctdistance=0.5) #,'gold'],)
     centre_circle = plt.Circle((0,0),0.65,fc='white')
     fig = plt.gcf()
@@ -350,13 +352,49 @@ def plot_followup_movements():
     plt.xlabel('Força muscular avaliada sobre flexão do cotovelo')
     plt.show()
 
+
+def check_feature_rate(X,y,attributes,ntrees,replace,mtry,max_depth,missing_branch):
+
+    seed = np.random.randint(0,10000)
+    clf1 = rf.RandomForest(ntrees=ntrees,oob_error=True,random_state=seed,
+        mtry=mtry,missing_branch=missing_branch,prob_answer=False,max_depth=max_depth,replace=replace,balance=True)
+    clf1.fit(X,y)
+    attributes_used = {}
+    for tree in clf1.forest:
+        
+        for attribute in tree.feature_indices:
+            if(attribute not in attributes_used.keys()):
+                attributes_used[attribute] = 1
+            else:
+                attributes_used[attribute] += 1
+
+    if(len((attributes_used.keys())) != X.shape[1]):
+        print(len(attributes_used.keys()))
+        print(X.shape[1])
+        print('not equal!!! %r' % (1-len(attributes_used.keys())/X.shape[1]))
+    print({attributes[a]: b for a,b in attributes_used.items()})
+    print(1-clf1.oob_error_)
+
+def check_other_participants(filename):
+    import pandas as pd
+    p = []
+    new_data = pd.read_csv('Dados/All_New_Participants.csv')
+    data = pd.read_csv('EXPORT/NES_EXPORT_EntradaUnificada_11_04_2017/Questionnaire_data/Q44071_Avaliação-de-Entrada-Unificada/Responses_Q44071.csv')
+
+    for participant in new_data[new_data.columns[0]]:
+        if(not np.any(participant == data['participant_code'])):
+            p.append(participant)
+            print(participant)
+    print(len(p))
+
+
     #print(sorted(Counter([int(a/30) for a in patients_considered.values()]).items()))
 
 #plot_side_distribution()
 #plot_event()
 #plot_followup_return_period()
-plot_ages()
+#plot_ages()
 #plot_followup_pain()
 #plot_followup_movements()
-#plot_surgery_period()
+plot_surgery_period()
 #calculate_mean_followup_return_period()
