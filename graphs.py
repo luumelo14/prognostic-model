@@ -352,6 +352,44 @@ def plot_followup_movements():
     plt.xlabel('Força muscular avaliada sobre flexão do cotovelo')
     plt.show()
 
+def plot_surgery_procedures():
+
+    data_path = '~/Faculdade/Mestrado/Projeto/scripts/Working Scripts/'
+    data_path = data_path + 'EXPERIMENT_DOWNLOAD/Group_patients-with-brachial-plexus-injury/Per_questionnaire_data/'
+    data_path = data_path + 'Q61802_unified-surgical-evaluation/Responses_Q61802.csv'
+
+    data = pd.read_csv(data_path, header=0, delimiter=",",
+        na_values=['N/A', 'None','nan','NAAI','NINA'], quoting=0, encoding='utf8', mangle_dupe_cols=False)
+
+
+    procedures = data.filter(like='lisprocedimentos')
+
+    d = {c:0 for c in procedures.columns}
+    for ix,row in procedures.iterrows():
+        for column in procedures.columns:
+            if(row[column] == 'Y'):
+                    d[column] += 1
+    procedure_names = {'lisprocedimentos[SQ001]': 'Neurólise', 'lisprocedimentos[SQ002]': 'Transferência de nervo',
+    'lisprocedimentos[SQ003]': 'Enxertia', 'lisprocedimentos[SQ004]': 'Dissecção de Neuroma',
+     'lisprocedimentos[SQ005]': 'Não informado'}
+    procedure_frequencies = sorted(d.items(),key=lambda x: x[0])
+    width = 0.8
+    fig,ax = plt.subplots()
+
+    plt.bar(range(len(procedure_frequencies)),[a[1] for a in procedure_frequencies],width=width,color='blue')
+    ax.set_xticks(np.arange(len(procedure_frequencies))+width/2)
+    ax.set_xticklabels([procedure_names[l] for l in [a[0] for a in procedure_frequencies]])
+    # plt.pie([a[1] for a in procedure_frequencies],
+    #     labels=[procedure_names[l] for l in [a[0] for a in procedure_frequencies]],colors=colors[::-1],
+    #     autopct='%1.1f%%', radius=1)
+    
+    
+    plt.show()
+
+def plot_missing_rate()
+    
+    data_path = 
+
 
 def check_feature_rate(X,y,attributes,ntrees,replace,mtry,max_depth,missing_branch):
 
@@ -375,6 +413,7 @@ def check_feature_rate(X,y,attributes,ntrees,replace,mtry,max_depth,missing_bran
     print({attributes[a]: b for a,b in attributes_used.items()})
     print(1-clf1.oob_error_)
 
+
 def check_other_participants(filename):
     import pandas as pd
     p = []
@@ -388,6 +427,7 @@ def check_other_participants(filename):
     print(len(p))
 
 
+
     #print(sorted(Counter([int(a/30) for a in patients_considered.values()]).items()))
 
 #plot_side_distribution()
@@ -396,5 +436,6 @@ def check_other_participants(filename):
 #plot_ages()
 #plot_followup_pain()
 #plot_followup_movements()
-plot_surgery_period()
+#plot_surgery_period()
+plot_surgery_procedures()
 #calculate_mean_followup_return_period()
