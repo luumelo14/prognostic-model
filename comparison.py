@@ -28,10 +28,10 @@ import pickle
 def feature_selection_threshold(X,y,attributes,ntrees,replace,mtry,max_depth,missing_branch,ntimes=25,title=None,missing_rate=False):
     vis =  average_varimp(X,y,attributes,ntrees,replace,mtry,max_depth,missing_branch,missing_rate=missing_rate,
         ntimes=ntimes,select=False,mean=True)
-    ordered_features = [a[0] for a in vis]
-    thresholds = [round(a[1],10) for a in vis]
+    ordered_features = [a[0] for a in sorted(vis,key=lambda x:np.mean(x[1]),reverse=True)]
+    thresholds =  [round(np.mean(vis[a][1]),10) for a in ordered_features]
     threshold_values = sorted([round(a,10) for a in set(thresholds)],reverse=True)
-    print([(attributes[a[0]],a[1]) for a in vis])
+    print(sorted([(attributes[a[0]],round(np.mean(a[1]),10)) for a in vis],key=lambda x: x[1],reverse=True))
     stop_indexes = []
     #print(attributes[all_features])
     scores = []
@@ -82,9 +82,15 @@ def feature_selection_threshold(X,y,attributes,ntrees,replace,mtry,max_depth,mis
     print('OOB ERROR: %r' % (1-clf.oob_error_))
 
     print('threshold: >= %r' % threshold_values[index])
+    importance_values = [[round(np.mean(aa),10) for aa in a[1]] for a in vis if round(np.mean(a[1]),10) >= threshold_values[index]]
+    features =  attributes[[a[0] for a in vis if round(np.mean(a[1]),10) >= threshold_values[index]]]
+
+    plot.boxplot(importance_values,features,title)
+
     plot.plot_feature_importance_vs_accuracy(threshold_values,scores,xlabel='threshold',title=title,special=index)
     
     return clf
+
 def boostrap_error(clf,X,y,weight=0.632):
     n_samples = X.shape[0]
     training_error = 1-clf.score(X,y)
