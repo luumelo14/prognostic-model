@@ -390,7 +390,7 @@ class DecisionTreeClassifier(object):
             #     print(pdist)
             # in case of a tie of the class distributions, final class will be the most frequent
             # class at the parent node
-            if(len(dist.keys()) > 1 and len(set(dist.values()))==1):
+            if(len(dist.keys()) > 1 and len(set(dist.values()))==1 and pdist is not None):
                 #print('tie of class distributions. depth: %r distribution: %r' % (depth,dist))
                 final_class = max(pdist.keys(),key=lambda k: pdist[k])
                 #print(dist)
@@ -414,7 +414,7 @@ class DecisionTreeClassifier(object):
         #if the best split could not be found, returns a decision node 
         if(feature_index == -1):
             #print('best split could not be found.')
-            if(len(dist.keys()) > 1 and len(set(dist.values()))==1):
+            if(len(dist.keys()) > 1 and len(set(dist.values()))==1 and pdist is not None):
                 #print('tie of class distributions. depth: %r distribution: %r' % (depth,dist))
                 final_class = max(pdist.keys(),key=lambda k: pdist[k])
                 #final_class = mode(yc)[0][0]
@@ -451,7 +451,7 @@ class DecisionTreeClassifier(object):
         if(len(ys) < 2):
             #print('instances belong to only one subset.')
 
-            if(len(dist.keys()) > 1 and len(set(dist.values()))==1):
+            if(len(dist.keys()) > 1 and len(set(dist.values()))==1 and pdist is not None):
                 #print('tie of class distributions. depth: %r distribution: %r' % (depth,dist))
                 final_class = max(pdist.keys(),key=lambda k: pdist[k])
                 #final_class = mode(yc)[0][0]
@@ -518,12 +518,13 @@ class DecisionTreeClassifier(object):
             # if there are samples with known values
             if(ynan.shape[0] != 0):
                 # continue building tree from the nan branch
+
                 branch_nan = self.build_tree(Xc,yc,feature_indices,depth+1,
                     dict([[a,1] for a in np.array(rows_to_consider)[nan_rows]]),dist)#,str(feature_index)+'->NAN')
             # if there aren't, then assign to the nan branch a decision node with no instances 
             # (for future classification purposes).
             else:   
-                if(len(dist.keys()) > 1 and len(set(dist.values()))==1):
+                if(len(dist.keys()) > 1 and len(set(dist.values()))==1 and pdist is not None):
                     #print('tie of class distributions. depth: %r distribution: %r' % (depth,dist))
                     final_class = max(pdist.keys(),key=lambda k: pdist[k])
                     #final_class = mode(yc)[0][0]
@@ -559,7 +560,7 @@ class DecisionTreeClassifier(object):
                         same_class=True
         if(same_class):
             #print('class node - all children nodes belong to the same class')
-            if(len(dist.keys()) > 1 and len(set(dist.values()))==1):
+            if(len(dist.keys()) > 1 and len(set(dist.values()))==1 and pdist is not None):
                 #print('tie of class distributions. depth: %r distribution: %r' % (depth,dist))
                 final_class = max(pdist.keys(),key=lambda k: pdist[k])
                 #final_class = mode(yc)[0][0]
