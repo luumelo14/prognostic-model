@@ -36,7 +36,9 @@ def feature_selection_threshold(X,y,attributes,ntrees,replace,mtry,max_depth,mis
     #print(attributes[all_features])
     scores = []
     stop_index = 0
+    i = 0
     for threshold in threshold_values:
+
         s_index = stop_index+1
         while s_index < len(thresholds):
             if(threshold > thresholds[s_index]):
@@ -49,9 +51,14 @@ def feature_selection_threshold(X,y,attributes,ntrees,replace,mtry,max_depth,mis
         seed = np.random.randint(0,10000)
         clf = rf.RandomForest(ntrees=ntrees,oob_error=True,random_state=seed,mtry=mtry,
             missing_branch=missing_branch,prob_answer=False,max_depth=max_depth,replace=replace,balance=True)
-        clf.fit(X[:,features],y)
+        if(i == X.shape[0]):
+            i = 0
+   
+        clf.fit(np.append(X[0:i,features],X[i+1:,features],axis=0),np.append(y[0:i],y[i+1:]))
+        #clf.fit(X,y)
         scores.append(1-clf.oob_error_)
         stop_indexes.append(stop_index)
+
     
     print('Best oob errors:')
     for old_index in np.where(np.array(scores) == max(scores))[0]:
@@ -126,18 +133,24 @@ def plot_boxplot(X,y,attributes,ntrees,replace,mtry,max_depth,missing_branch,nti
 def average_varimp(X,y,attributes,ntrees,replace,mtry,max_depth,missing_branch,vitype='err',ntimes=25,
     select=True,printvi=False,plotvi=False,cutpoint=0.0,mean=False,title=None, missing_rate=False):
     vi = {a: [] for a in range(X.shape[1])}
-    for i in range(ntimes):
-        seed = np.random.randint(0,10000)
-        clf = rf.RandomForest(ntrees=ntrees,oob_error=True,random_state=seed,mtry=mtry,
-            missing_branch=missing_branch,prob_answer=False,max_depth=max_depth,replace=replace,balance=True)
-        clf.fit(X,y)
-        varimps = clf.variable_importance(vitype=vitype,vimissing=True)
+    for i in range(X.shape[0]):
+        if(i < ntimes):
+            seed = np.random.randint(0,10000)
+            clf = rf.RandomForest(ntrees=ntrees,oob_error=True,random_state=seed,mtry=mtry,
+                missing_branch=missing_branch,prob_answer=False,max_depth=max_depth,replace=replace,balance=True)
+            #print(np.append(X[0:i,:],X[i+1:,:],axis=0).shape)
+            #print(len(np.append(y[0:i],y[i+1:])))
+            clf.fit(np.append(X[0:i,:],X[i+1:,:],axis=0),np.append(y[0:i],y[i+1:]))
+            #clf.fit(X,y)
+            varimps = clf.variable_importance(vitype=vimissing,vimissing=True)
 
-        for var in varimps.keys():
-            if(missing_rate):
-                vi[var].append(varimps[var] * utils.notNanProportion(X[:,var]))
-            else:
-                vi[var].append(varimps[var])
+            for var in varimps.keys():
+                if(missing_rate):
+                    vi[var].append(varimps[var] * utils.notNanProportion(X[:,var]))
+                else:
+                    vi[var].append(varimps[var])
+        else:
+            break
 
     vimean = {a: [] for a in range(X.shape[1])}
     for var in vi.keys():
