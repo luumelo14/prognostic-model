@@ -25,41 +25,50 @@ import pickle
 # Robin Genuer, Jean-Michel Poggi, and Christine Tuleau-Malot. 2010. 
 # Variable selection using random forests. Pattern Recogn. Lett. 31, 14 (October 2010), 2225-2236. 
 # DOI=http://dx.doi.org/10.1016/j.patrec.2010.03.014  
-def feature_selection_threshold(X,y,attributes,ntrees,replace,mtry,max_depth,missing_branch,ntimes=25,title=None,missing_rate=False):
-    vis =  average_varimp(X,y,attributes,ntrees,replace,mtry,max_depth,missing_branch,missing_rate=missing_rate,
-        ntimes=ntimes,select=False,mean=True)
-    ordered_features = [a[0] for a in sorted(vis,key=lambda x:np.mean(x[1]),reverse=True)]
+def feature_selection_threshold(X,y,attributes,ntrees,replace,mtry,max_depth,missing_branch,balance,
+    cutoff,ntimes=25,title=None,missing_rate=False,vitype='err',vimissing=True,backwards=False):
+    vis =  average_varimp(X,y,attributes,ntrees,replace,mtry,max_depth,missing_branch,balance,cutoff,
+        missing_rate=missing_rate,ntimes=ntimes,select=False,mean=False,vitype=vitype,vimissing=vimissing,printvi=False)
+
+    if(backwards):
+        reverse=False
+        comp_threshold = lambda x,y: x <= y
+        get_slice = lambda x,index: x[index:] 
+        stop_index=-1
+    else:
+        reverse=True
+        comp_threshold = lambda x,y: x > y
+        get_slice = lambda x: x[0:index]
+        stop_index=0
+    ordered_features = [a[0] for a in sorted(vis,key=lambda x:np.mean(x[1]),reverse=reverse)]
     thresholds =  [round(np.mean(vis[a][1]),10) for a in ordered_features]
-    threshold_values = sorted([round(a,10) for a in set(thresholds)],reverse=True)
+    threshold_values = sorted([round(a,10) for a in set(thresholds)],reverse=reverse)
     print(sorted([(attributes[a[0]],round(np.mean(a[1]),10)) for a in vis],key=lambda x: x[1],reverse=True))
+ 
     stop_indexes = []
-    #print(attributes[all_features])
     scores = []
-    stop_index = 0
     i = 0
     for threshold in threshold_values:
 
         s_index = stop_index+1
         while s_index < len(thresholds):
-            if(threshold > thresholds[s_index]):
+            if(comp_threshold(threshold,thresholds[s_index])):
                 break
             else:
                 s_index+=1
         stop_index = s_index
-
-        features = ordered_features[0:stop_index]
+        features = get_slice(ordered_features,stop_index)
         seed = np.random.randint(0,10000)
         clf = rf.RandomForest(ntrees=ntrees,oob_error=True,random_state=seed,mtry=mtry,
-            missing_branch=missing_branch,prob_answer=False,max_depth=max_depth,replace=replace,balance=True)
+            missing_branch=missing_branch,prob_answer=False,max_depth=max_depth,replace=replace,balance=balance,
+            cutoff=cutoff)
         if(i == X.shape[0]):
             i = 0
    
         clf.fit(np.append(X[0:i,features],X[i+1:,features],axis=0),np.append(y[0:i],y[i+1:]))
-        #clf.fit(X,y)
         scores.append(1-clf.oob_error_)
         stop_indexes.append(stop_index)
 
-    
     print('Best oob errors:')
     for old_index in np.where(np.array(scores) == max(scores))[0]:
         #print('Features:')
@@ -67,29 +76,34 @@ def feature_selection_threshold(X,y,attributes,ntrees,replace,mtry,max_depth,mis
         print(scores[old_index])
 
     print('Best 1 s.e. set of features:')
-    std = np.std(scores)
-    indexes= np.where(np.array(scores) == scores[((np.abs(np.array(scores)-(max(scores)-std))).argmin())])[0]
-    index = max(indexes,key=lambda x: stop_indexes[x])
+    stdm = sem(scores)
+    indexes= np.where(np.array(scores) == scores[((np.abs(np.array(scores)-(max(scores)-stdm))).argmin())])[0]
+    index = indexes[0]
+    print(scores[index])
+    
+    #index = indexes[int(len(indexes)/2)]
+    #index = max(indexes,key=lambda x: stop_indexes[x])
     #print('Features:')
     #print(attributes[ordered_features[0:len(ordered_features)-index]])
 
     seed = np.random.randint(0,10000)
     clf = rf.RandomForest(ntrees=ntrees,oob_error=True,random_state=seed,mtry=mtry,
-            missing_branch=missing_branch,prob_answer=False,max_depth=max_depth,replace=replace,balance=True)
+            missing_branch=missing_branch,prob_answer=False,max_depth=max_depth,replace=replace,balance=balance,
+            cutoff=cutoff)
+    
+    clf.attributes = attributes[get_slice(ordered_features,stop_indexes[index])]
+    clf.fit(X[:,get_slice(ordered_features,stop_indexes[index])],y)
 
-    clf.attributes = attributes[ordered_features[0:stop_indexes[index]]]
-    clf.fit(X[:,ordered_features[0:stop_indexes[index]]],y)
     print('OOB ERROR: %r' % (1-clf.oob_error_))
-
     print('threshold: >= %r' % threshold_values[index])
     importance_values = [[round(np.mean(aa),10) for aa in a[1]] for a in vis if round(np.mean(a[1]),10) >= threshold_values[index]]
     features =  attributes[[a[0] for a in vis if round(np.mean(a[1]),10) >= threshold_values[index]]]
 
     plot.boxplot(importance_values,features,title)
-
     plot.plot_feature_importance_vs_accuracy(threshold_values,scores,xlabel='threshold',title=title,special=index)
     
     return clf
+
 
 def boostrap_error(clf,X,y,weight=0.632):
     n_samples = X.shape[0]
