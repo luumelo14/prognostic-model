@@ -68,8 +68,9 @@ class DecisionTreeClassifier(object):
         
 
         random.seed(self.random_state)
-
+        
         self.feature_indices = random.sample(range(n_features), n_sub_features)
+
         # builds tree from the root
         self.root = self.build_tree(X,y,self.feature_indices,0,dict([[a,1] for a in range(n_samples)]))
 
@@ -322,13 +323,13 @@ class DecisionTreeClassifier(object):
                     #left child
                     cont+=1
                     f.write(str(v) + ' -> ' + str(cont))  
-                    f.write(' [label = "<= ' + str(node.values[0]) + '"];\n')
+                    f.write(' [label = "<= ' + str(round(node.values[0],4)) + '"];\n')
                     queue.append([cont,node.branches[0]])
 
                     #right child
                     cont+=1
                     f.write(str(v) + ' -> ' + str(cont))  
-                    f.write(' [label = "> ' + str(node.values[0]) + '"];\n')
+                    f.write(' [label = "> ' + str(round(node.values[0],4)) + '"];\n')
 
                     queue.append([cont,node.branches[1]])
                 #categoric feature
@@ -545,7 +546,8 @@ class DecisionTreeClassifier(object):
 
         same_class = False
         fclass = branches[0].final_class
-        if(fclass):
+        import pdb
+        if(fclass is not None):
             for child in range(1,len(branches)):
                 if(branches[child].final_class != fclass):
                     same_class=False
@@ -558,7 +560,7 @@ class DecisionTreeClassifier(object):
                             same_class=True
                     else:
                         same_class=True
-        if(same_class):
+        if(same_class is True):
             #print('class node - all children nodes belong to the same class')
             if(len(dist.keys()) > 1 and len(set(dist.values()))==1 and pdist is not None):
                 #print('tie of class distributions. depth: %r distribution: %r' % (depth,dist))
