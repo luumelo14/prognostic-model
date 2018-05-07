@@ -234,10 +234,10 @@ def compare_models(X,y,class_name,transform=False,scale=False,n_splits=10,test_s
         scaler = StandardScaler()
         X = scaler.fit_transform(X)
     n_splits = X.shape[0]
-    models = [SGDClassifier(random_state=9,penalty='l1'),LogisticRegression(random_state=9),
+    models = [SGDClassifier(random_state=9,penalty='l1',loss='squared_loss'),LogisticRegression(random_state=9,penalty='l2'),
     MLPClassifier(random_state=9,activation='logistic',max_iter = 300,early_stopping=True),
     SVC(kernel='sigmoid',random_state=9), tree.DecisionTreeClassifier(criterion='entropy',random_state=9),
-    RandomForestClassifier(n_estimators=100,criterion='entropy',max_features=50, oob_score = True,random_state=9)]
+    RandomForestClassifier(n_estimators=100,criterion='entropy',max_features='sqrt', oob_score = True,random_state=9)]
 
     sss = StratifiedShuffleSplit(n_splits=n_splits,test_size=test_size,random_state=random_state)#test_size=0.2,random_state=9)
     for clf in models:
@@ -245,19 +245,7 @@ def compare_models(X,y,class_name,transform=False,scale=False,n_splits=10,test_s
         print('\n')
         maxl = 0
         clf_scores = []
-        #clf = LogisticRegression(class_weight=None,penalty='l2',solver='sag',dual=False,C=0.01,random_state=9)
-        #clf =  SGDClassifier(random_state=9)
-        #clf = MLPClassifier(max_iter = 1000,random_state=9)
-        #clf = SVC(random_state=9,kernel='sigmoid')
-        # clf = rf.RandomForest(random_state=9,variable_importance=True,feature_contribution=False,ntrees=50,
-        #     oob_error=True,mtry=math.sqrt,missing_branch=True,prob_answer=False,max_depth=3,replace=False,balance=True)
-        #clf = AdaBoostClassifier(n_estimators=50,random_state=9)
-        #clf = RandomForestClassifier(n_estimators=50,criterion='entropy', oob_score = True, max_features=None,random_state=9)
-        #clf = tree.DecisionTreeClassifier(random_state = 9,criterion='gini',min_samples_leaf=0.05)
-        #clf = dt.DecisionTreeClassifier(random_state=9,missing_branch=True,min_samples_split=0.8,max_depth=None)
-        #clf2 = rf.RandomForest(random_state=19,variable_importance=True,ntrees=50,oob_error=True,mtry=math.sqrt,missing_branch=False,prob_answer=False,max_depth=3,replace=False)
-        
-        #clf = mtrf.MTRandomForestClassifier([-6,-5,-4,-3,-2],ntrees=50,oob_error=True,random_state=random_state,mtry=math.sqrt,missing_branch=False,prob_answer=False,max_depth=3,replace=True)
+
         for train_index, test_index in sss.split(X,y):
             Xtrain = X[train_index]
             Xval = X[test_index]
@@ -266,45 +254,23 @@ def compare_models(X,y,class_name,transform=False,scale=False,n_splits=10,test_s
 
             if(use_feature_selection):
                 model = SelectFromModel(clf, prefit=False)
-                #model = SelectKBest()
                 Xtrain = model.fit_transform(Xtrain,ytrain)
                 Xval = model.transform(Xval)
 
-                #new_attributes = attributes[model.get_support(indices=True)]
 
             clf.fit(Xtrain,ytrain)
 
-            #variables = [a[0] for a in clf.variable_importance() if a[1] > 0]
-
-
-            #clf2.fit(Xtrain[:,variables],ytrain)
-            #print(f)
-            #clf.forest[14].to_dot(original_attributes,'out.dot')
-            #clf.forest[20].to_dot(original_attributes,'out200.dot')
-            #clf.forest[40].to_dot(original_attributes,'out400.dot')
-            #slg = clf.score(Xval[:,variables],yval)
-            #slg = clf.score(Xval[:,sorted(f, key=lambda k: np.median(f[k]),reverse=True)],[(yv) for yv in (yval)])
-            slg = clf.score(Xval,[(yv) for yv in (yval)])
+             slg = clf.score(Xval,[(yv) for yv in (yval)])
             clf_scores.append(slg)    
-
-            # print('Acurácia no conjunto de validação:')
-            # print(slg)
-            #print(1-clf.oob_error_)
 
             if slg > maxl:
                maxl = slg
-               #best_model = clf
-               #if(use_feature_selection):
-                #   best_fs_model = model
-                   #best_attributes = new_attributes
 
 
         print('Acurácia média:')
         print(np.mean(clf_scores))
         print('Acurácia mediana:')
         print(np.median(clf_scores))
-        #print(sum(clf_scores)/float(len(clf_scores)))
-
         print('Acurácia máxima:')
         print(maxl)
 
