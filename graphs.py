@@ -88,38 +88,65 @@ def plot_followup_return_period():
     data = pd.read_csv(data_path, header=0, delimiter=",",
             na_values=['N/A', 'None','nan','NAAI','NINA'], quoting=0, encoding='utf8', mangle_dupe_cols=False)
 
+    more_than_one_return = {}
     patients_considered = {}
     for i,row in data.iterrows():
         if(row['participant code']) not in patients_considered:
             patients_considered[row['participant code']] = row['formTempoAval']
+            more_than_one_return[row['participant code']] = False
         else:
-            if(row['formTempoAval'] < patients_considered[row['participant code']]):
+            if(row['formTempoAval'] > patients_considered[row['participant code']]):
                 patients_considered[row['participant code']] = row['formTempoAval']
+            more_than_one_return[row['participant code']] = True
 
+    patients_to_plot_m1r = {}
+    patients_to_plot_1r = {}
     for k in patients_considered.keys():
-        patients_considered[k] = int(patients_considered[k]/30)
-    values = (sorted(Counter(patients_considered.values()).items(),key=lambda x: x[0]))
-    time_groups = [0,0,0,0,0,0,0]
-    for time,frequency in values:
-        if(time <= 6):
-            time_groups[6] += frequency
-        elif(time <= 12):
-            time_groups[5] += frequency
-        elif(time <= 18):
-            time_groups[4] += frequency
-        elif(time <= 24):
-            time_groups[3] += frequency
-        elif(time <= 30):
-            time_groups[2] += frequency
-        elif(time <= 36):
-            time_groups[1] += frequency
+        if(more_than_one_return[k]):
+            patients_to_plot_m1r[k] = int(patients_considered[k]/30)
         else:
-            time_groups[0] += frequency 
-    labels = ['37 meses ou mais','31 a 36 meses','25 a 30 meses','19 a 24 meses','13 a 18 meses','7 a 12 meses','0 a 6 meses']
-    plt.pie(time_groups,colors=colors[::-1],
-    labels=labels,autopct='%1.1f%%',startangle=90) #,'gold'],)
-    plt.axis('equal')
+            patients_to_plot_1r[k] = int(patients_considered[k]/30)
+    values = (sorted(Counter(patients_to_plot_m1r.values()).items(),key=lambda x: x[0]))
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
+    plt.bar([a[0] for a in values],[a[1] for a in values],width=0.8)
+    ax.set_xticks(np.arange(0,100,10)+0.4)
+    ax.set_xticklabels(np.arange(0,100,10))
+    ax.set_yticks(np.arange(7))
+    plt.xlabel('Período entre a lesão e o último retorno ao INDC em meses')
+    plt.ylabel('Número de pacientes')
     plt.show()
+
+    values = (sorted(Counter(patients_to_plot_1r.values()).items(),key=lambda x: x[0]))
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
+    plt.bar([a[0] for a in values],[a[1] for a in values],width=0.8)
+    ax.set_xticks(np.arange(0,100,10)+0.4)
+    ax.set_xticklabels(np.arange(0,100,10))
+    plt.xlabel('Período entre a lesão e o primeiro retorno ao INDC em meses')
+    plt.ylabel('Número de pacientes')
+    plt.show()
+    # time_groups = [0,0,0,0,0,0,0]
+    # for time,frequency in values:
+    #     if(time <= 6):
+    #         time_groups[6] += frequency
+    #     elif(time <= 12):
+    #         time_groups[5] += frequency
+    #     elif(time <= 18):
+    #         time_groups[4] += frequency
+    #     elif(time <= 24):
+    #         time_groups[3] += frequency
+    #     elif(time <= 30):
+    #         time_groups[2] += frequency
+    #     elif(time <= 36):
+    #         time_groups[1] += frequency
+    #     else:
+    #         time_groups[0] += frequency 
+    # labels = ['37 meses ou mais','31 a 36 meses','25 a 30 meses','19 a 24 meses','13 a 18 meses','7 a 12 meses','0 a 6 meses']
+    # plt.pie(time_groups,colors=colors[::-1],
+    # labels=labels,autopct='%1.1f%%',startangle=90) #,'gold'],)
+    # plt.axis('equal')
+    # plt.show()
 
 def plot_surgery_period():
 
@@ -272,6 +299,86 @@ def plot_followup_pain():
     plt.xlabel('Sente dor após a lesão?')
     plt.show()
 
+def plot_followup_improvements():
+
+    data_path = '~/Faculdade/Mestrado/Projeto/scripts/Working Scripts/'
+    data_path = data_path + 'EXPERIMENT_DOWNLOAD/Group_patients-with-brachial-plexus-injury/Per_questionnaire_data/'
+    #data_path = data_path + 'Q61802_unified-surgical-evaluation/Responses_Q61802.csv'
+    data_path = data_path + 'Q92510_unified-follow-up-assessment/Responses_Q92510.csv'
+
+    followup_data = pd.read_csv(data_path, header=0, delimiter=",",
+            na_values=['N/A', 'None','nan','NAAI','NINA'], quoting=0, encoding='utf8', mangle_dupe_cols=False)
+
+    data_path = '~/Faculdade/Mestrado/Projeto/scripts/Working Scripts/'
+    data_path = data_path + 'EXPERIMENT_DOWNLOAD/Group_patients-with-brachial-plexus-injury/Per_questionnaire_data/'
+    data_path = data_path + 'Q44071_unified-admission-assessment/Responses_Q44071.csv'
+
+    admission_data = pd.read_csv(data_path, header=0, delimiter=",",
+            na_values=['N/A', 'None','nan','NAAI','NINA'], quoting=0, encoding='utf8', mangle_dupe_cols=False)
+    print(admission_data.shape)
+    print(followup_data.shape)
+    return_value = {}
+    return_period = {}
+    surgery_patients = []
+    injury_side_column = admission_data.filter(like='opcLdLesao').columns[0]
+    merged_data = admission_data.merge(followup_data,how='inner',on='participant code',suffixes=('_a','_f'))
+    for ix, row in merged_data.iterrows():
+
+        if row['participant code'] in return_value.keys():
+            if(not utils.isnan(row['opcForca'+row[injury_side_column]+'[AbdOmbro]_f'])):
+                return_value[row['participant code']].append(row['opcForca'+row[injury_side_column]+'[AbdOmbro]_f'])
+            
+                if(row['formTempoAval_f'] < return_period[row['participant code']][-1]):
+                    return_value[row['participant code']][-1], return_value[row['participant code']][-2] = return_value[row['participant code']][-2], return_value[row['participant code']][-1]
+                    tmp = return_period[row['participant code']][-1]
+                    return_period[row['participant code']][-1] = row['formTempoAval_f']
+                    return_period[row['participant code']].append(tmp)
+                else:
+                    return_period[row['participant code']].append(row['formTempoAval_f'])
+        else:
+            if(not utils.isnan(row['opcForca'+row[injury_side_column]+'[AbdOmbro]_a'])):
+                return_value[row['participant code']] = [row['opcForca'+row[injury_side_column]+'[AbdOmbro]_a']]
+                return_period[row['participant code']] = [row['formTempoAval_a']]
+
+                if(not utils.isnan(row['opcForca'+row[injury_side_column]+'[AbdOmbro]_f'])):
+                    return_value[row['participant code']].append(row['opcForca'+row[injury_side_column]+'[AbdOmbro]_f'])
+                    return_period[row['participant code']].append(row['formTempoAval_f'])
+        if(row['snCplexoAt_a'] == 'S' or row['snCplexoAt_f'] == 'S'):
+            surgery_patients.append(row['participant code'])
+
+    spatients_to_plot = []    
+    speriods_to_plot = []
+    nspatients_to_plot = []
+    nsperiods_to_plot = []
+    for patient in return_value.keys():
+        if(len(return_value[patient]) >= 3):
+            if(patient in surgery_patients):
+                spatients_to_plot.append(return_value[patient])
+                speriods_to_plot.append(return_period[patient])
+            else:
+                nspatients_to_plot.append(return_value[patient])
+                nsperiods_to_plot.append(return_period[patient])
+    
+    print(min([b for a in return_period.values() for b in a ]))
+    print(max([b for a in return_period.values() for b in a]))
+    exit()
+
+    for j in range(0,len(spatients_to_plot),5):
+        ax = plt.subplot(111) 
+        plt.axis((0,3000,-1,6))
+        for i in range(j,j+5):
+            if(i < len(spatients_to_plot)):   
+                ax.plot(speriods_to_plot[i],spatients_to_plot[i],'x-')#,color=colors[i])
+            else:
+                break
+        plt.show()
+
+    ax = plt.subplot(111) 
+    plt.axis((0,3000,-1,6))
+    for i in range(len(nspatients_to_plot)):
+        ax.plot(nsperiods_to_plot[i],nspatients_to_plot[i],'x-')
+    plt.show()
+
 def plot_followup_movements():
 
     data_path = '~/Faculdade/Mestrado/Projeto/scripts/Working Scripts/'
@@ -386,9 +493,6 @@ def plot_surgery_procedures():
     
     plt.show()
 
-def plot_missing_rate()
-    
-    data_path = 
 
 
 def check_feature_rate(X,y,attributes,ntrees,replace,mtry,max_depth,missing_branch):
@@ -432,10 +536,11 @@ def check_other_participants(filename):
 
 #plot_side_distribution()
 #plot_event()
-#plot_followup_return_period()
+plot_followup_return_period()
 #plot_ages()
 #plot_followup_pain()
 #plot_followup_movements()
 #plot_surgery_period()
-plot_surgery_procedures()
+#plot_surgery_procedures()
 #calculate_mean_followup_return_period()
+#plot_followup_improvements()
