@@ -18,12 +18,14 @@ def plot_side_distribution():
     data = pd.read_csv(data_path, header=0, delimiter=",",
             na_values=['N/A', 'None','nan','NAAI','NINA'], quoting=0, encoding='utf8', mangle_dupe_cols=False)
     side_distribution = sorted(Counter(data['opcLdLesao']).items())
+    ordered_side_distribution = [side_distribution[2],side_distribution[0],side_distribution[1]]
     side_labels = {'D': 'Direito', 'E': 'Esquerdo', 'DE': 'Ambos'}
     width = 0.6
-    plt.bar(range(len(side_distribution)), [a[1] for a in side_distribution],width=width)
-    plt.xticks(np.array(range(len(side_distribution)))+width/2,[side_labels[a[0]] for a in side_distribution])
-    plt.yticks(range(0,max(side_distribution,key=lambda x: x[1])[1]+5,5))
-
+    plt.bar(range(len(side_distribution)), [a[1] for a in ordered_side_distribution],width=width)
+    plt.xticks(np.array(range(-1,len(side_distribution)))+width/2,['']+[side_labels[a[0]] for a in ordered_side_distribution])
+    plt.yticks(range(0,max(ordered_side_distribution,key=lambda x: x[1])[1]+5,5))
+    plt.xlabel('Lado lesionado')
+    plt.ylabel('Número de pacientes')
     plt.show()
 
 def plot_event():
@@ -72,7 +74,7 @@ def plot_event():
     # right = plt.bar(x+width, [Counter(events_right[event_names[event][1]])['Y'] for event in y], width,color='red')
     ax.set_xticks(np.arange(i)+width)
     ax.set_xticklabels([events_description[e] for e in events_in_plot],rotation=90)
-
+    plt.ylabel('Frequência')
     ax.legend((l,r), ('Esquerdo','Direito'))
     plt.tight_layout()
     #plt.width = width
@@ -95,7 +97,7 @@ def plot_followup_return_period():
             patients_considered[row['participant code']] = row['formTempoAval']
             more_than_one_return[row['participant code']] = False
         else:
-            if(row['formTempoAval'] > patients_considered[row['participant code']]):
+            if(row['formTempoAval'] < patients_considered[row['participant code']]):
                 patients_considered[row['participant code']] = row['formTempoAval']
             more_than_one_return[row['participant code']] = True
 
@@ -109,13 +111,15 @@ def plot_followup_return_period():
     values = (sorted(Counter(patients_to_plot_m1r.values()).items(),key=lambda x: x[0]))
     fig = plt.figure()
     ax = fig.add_subplot(111)
+
     plt.bar([a[0] for a in values],[a[1] for a in values],width=0.8)
-    ax.set_xticks(np.arange(0,100,10)+0.4)
-    ax.set_xticklabels(np.arange(0,100,10))
-    ax.set_yticks(np.arange(7))
-    plt.xlabel('Período entre a lesão e o último retorno ao INDC em meses')
+    ax.set_xticks(np.arange(0,70,10)+0.4)
+    ax.set_xticklabels(np.arange(0,70,10))
+    ax.set_yticks(np.arange(6))
+    plt.xlabel('Período entre a lesão e o primeiro retorno ao INDC em meses')
     plt.ylabel('Número de pacientes')
     plt.show()
+
 
     values = (sorted(Counter(patients_to_plot_1r.values()).items(),key=lambda x: x[0]))
     fig = plt.figure()
@@ -123,7 +127,8 @@ def plot_followup_return_period():
     plt.bar([a[0] for a in values],[a[1] for a in values],width=0.8)
     ax.set_xticks(np.arange(0,100,10)+0.4)
     ax.set_xticklabels(np.arange(0,100,10))
-    plt.xlabel('Período entre a lesão e o primeiro retorno ao INDC em meses')
+    ax.set_yticks(np.arange(8))
+    plt.xlabel('Período entre a lesão e o retorno ao INDC em meses')
     plt.ylabel('Número de pacientes')
     plt.show()
     # time_groups = [0,0,0,0,0,0,0]
@@ -493,10 +498,102 @@ def plot_surgery_procedures():
     
     plt.show()
 
+def plot_missing_rate():
+    data_path = 'RotEOmbroCirurgiaCategNAReduzido.csv'#'Dados/risk_factors_cervical_cancer.csv'
+    class_name = 'Q92510_opcForca[RotEOmbro]' 
+    #class_name = 'Q92510_snDorPos'
+    class_questionnaire = 'Q92510'
+    missing_input= 'none'#'mean'
+    transform = False
+    scale = True
+    use_text = False
+    dummy = False
+    use_feature_selection = False
+    data, original_attributes, categories  = read.readData(data_path = data_path, class_name = class_name, 
+    class_questionnaire = class_questionnaire, missing_input = missing_input, dummy = dummy,
+    transform_numeric = transform, use_text=use_text, skip_class_questionnaire=True)
+    X = data
+    print(X.shape)
+       
+    features_missing = [0,0,0,0,0]
+    
+    
+    m = 0
+    for j in range((X.shape[1])):
+        cj = 0
+        for i in range((X.shape[0])):
+            if(utils.isnan(X[i][j])):
+                cj+=1
+        if(cj/X.shape[0] == 0):
+            print(original_attributes[j])
+            features_missing[0] += 1
+        elif(cj/X.shape[0] <= 0.25):
+            features_missing[1] += 1
+        elif(cj/X.shape[0] <= 0.5):
+            features_missing[2] += 1
+        elif(cj/X.shape[0] <= 0.75):
+            features_missing[3] += 1
+        elif(cj/X.shape[0] < 1):
+            features_missing[4] += 1
+
+        m += cj/X.shape[0]
+    print(m/X.shape[1])
+    exit()
+    print(features_missing)
+
+    plt.pie(features_missing[::-1],labels=['0%','0.05% a 25%','26% a 50%','51% a 75%','76% a 98%'][::-1],
+        colors=colors,startangle=90, radius=1,autopct=lambda p: '{:.0f}'.format(p * sum(features_missing) / 100))
+    plt.show()
 
 
-def check_feature_rate(X,y,attributes,ntrees,replace,mtry,max_depth,missing_branch):
+def check_missing_rate():
+    data_path = 'DorCirurgiaCategNAReduzido.csv'#'Dados/risk_factors_cervical_cancer.csv'
+    data = pd.read_csv(data_path, header=0, delimiter=",",
+        na_values=['N/A', 'None','nan','NAAI','NINA'], quoting=0, encoding='utf8', mangle_dupe_cols=False)
+    X = data
+    print(X.shape)
+    patients_missing = []
+    ci = 0
+    features_missing = []
+    cj = 0
+    for ix,row in X.iterrows():
+        for j in X.columns:
+            if(utils.isnan(row[j])):
+                if(ix not in patients_missing):
+                    ci+=1
+                    patients_missing.append(ix)
+                if(j not in features_missing):
+                    cj+=1
+                    features_missing.append(j)
+    print(ci/X.shape[0])
+    print(cj/X.shape[1])
 
+
+def check_feature_rate():
+    import math
+    import randomForest as rf
+    missing_input= 'none'#'mean'
+    transform = False
+    scale = True
+    use_text = False
+    dummy = False
+    use_feature_selection = False
+
+    data_path = 'DorCirurgiaCategNA.csv'
+    class_questionnaire = 'Q92510'
+    class_name = 'Q92510_snDorPos' 
+    data, original_attributes, categories  = read.readData(data_path = data_path, class_name = class_name, 
+        class_questionnaire = class_questionnaire, missing_input = missing_input, dummy = dummy,
+        transform_numeric = transform, use_text=use_text, skip_class_questionnaire=True)#skip_class_questionnaire=False)
+
+    X = data[:,0:-1]
+    y = np.array(data[:,-1])
+ 
+    ntrees = 5001
+    replace = False
+    mtry = math.sqrt
+    max_depth = None
+    missing_branch=True
     seed = np.random.randint(0,10000)
     clf1 = rf.RandomForest(ntrees=ntrees,oob_error=True,random_state=seed,
         mtry=mtry,missing_branch=missing_branch,prob_answer=False,max_depth=max_depth,replace=replace,balance=True)
@@ -514,7 +611,7 @@ def check_feature_rate(X,y,attributes,ntrees,replace,mtry,max_depth,missing_bran
         print(len(attributes_used.keys()))
         print(X.shape[1])
         print('not equal!!! %r' % (1-len(attributes_used.keys())/X.shape[1]))
-    print({attributes[a]: b for a,b in attributes_used.items()})
+    print({original_attributes[a]: b for a,b in attributes_used.items()})
     print(1-clf1.oob_error_)
 
 
@@ -536,7 +633,10 @@ def check_other_participants(filename):
 
 #plot_side_distribution()
 #plot_event()
-plot_followup_return_period()
+#plot_missing_rate()
+check_feature_rate()
+#plot_followup_return_period()
+#plot_side_distribution()
 #plot_ages()
 #plot_followup_pain()
 #plot_followup_movements()
