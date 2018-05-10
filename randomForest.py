@@ -11,13 +11,14 @@ import utils
 import decisionTree as dt
 import time
 from math import ceil
+from imblearn.under_sampling import RandomUnderSampler
 
 class RandomForest(object):
 
     def __init__(self, ntrees=300, mtry=np.sqrt, max_depth=None,
         min_samples_split=0.8, bootstrap=0.8, oob_error = True,replace = True,
-        missing_branch=False, balance=True,prob_answer = False, 
-        random_state=9):
+        missing_branch=False, balance=False,prob_answer = False, cutoff=0.5,
+        control_class=None, random_state=9):
 
         # number of trees
         self.ntrees = ntrees
@@ -40,10 +41,15 @@ class RandomForest(object):
         self.prob = prob_answer
         # defines the seed that will be used to randomly select the features for each tree
         self.random_state = random_state
-        # if balance = True, then keep the same class proportion for each randomly selected subsample 
+        # if balance = True, then Balanced Random Forests are used 
+        #   (From "Using Random Forest to Learn Imbalanced Data" (2004) by Chao Chen, Andy Liaw, Leo Breiman).
+        # if balance = False, keep the same class proportion for each randomly selected subsample
         self.balance = balance
+        # cutoff represents the proportion of votes to consider in case of imbalanced classes.
+        # only makes sense for Balanced Random Forests (if balance = False)
+        self.cutoff = cutoff
         # control class
-        self.control_class = None
+        self.control_class = control_class
 
     # fits a forest for the data X with classes y
     def fit(self, X, y):
@@ -53,56 +59,38 @@ class RandomForest(object):
         self.y = y
         n_samples = len(y)
 
+
         if(self.replace is True):
             n_sub_samples = n_samples
         else:
             n_sub_samples = round(n_samples*self.bootstrap)
 
+
+
         # list of out-of-bag sets     
         self.oob = []
         index_oob_samples = np.array([])
-        #if(self.balance):
 
-            # min_class = np.argmin([len(c) for c in classes])
-            # print(classes[min_class])
-            # print(classes[(min_class+1)%2])
-
-            # if(self.replace is False):
-            #     subsets = []
-            #     nsubsets = ceil(len(classes[(min_class+1)%2])/len(classes[min_class]))
-            #     print('nsubsets: %r' % nsubsets)
-            #     subsets.append(np.random.choice(classes[(min_class+1)%2],len(classes[min_class]),replace=False))
-            #     print('initial subset: %r' % subsets)
-            #     for j in range(1,nsubsets):
-            #         remaining_samples = np.array(classes[(min_class+1)%2])
-            #         for k in range(j):
-            #             print(-k-1)
-            #             print(subsets[-k-1])
-            #             print('remaining samples begining: %r ' % remaining_samples)
-            #             print(np.where(np.array(subsets[-k-1]) == remaining_samples))
-            #             remaining_samples = (np.delete(remaining_samples,np.where(subsets[-k-1] == remaining_samples)[0]))
-            #             print('reamaing samples after delete: %r' % remaining_samples)
-            #             if(j != nsubsets-1):
-            #                 remaining_samples = np.random.choice(remaining_samples,len(classes[min_class]),replace=False)
-            #             print('remaining: %r' % remaining_samples)
-            #         subsets.append(remaining_samples)
-
-            #         #subsets[-1] = sorted(np.append(subsets[-1],classes[min_class]))
-            #     for j in range(nsubsets):
-            #         subsets[j] = np.append(subsets[j],classes[min_class])
-            # print(subsets)
-            # exit()
         classes = []
+        min_len = len(y)
+        self.min_class = list(set(y))[0]
+        min_class_index = 0
     # separate samples according to their classes
         for c in set(y):
             classes.append([j for j in range(len(y)) if y[j] == c])
+
+            if(len(classes[-1]) < min_len):
+                min_len = len(classes[-1])
+                self.min_class = c
+                min_class_index = len(classes)-1
+
         #print('Creating trees...')
         # for each tree
         for i in range(self.ntrees):
 
             np.random.seed(self.random_state+i)
-            #same proportion of instances from each class
-            if(self.balance):
+            # select same proportion of instances from each class
+            if(self.balance is False):
                 # select indexes of sub samples considering class balance    
                 index_sub_samples = sorted([k for l in [np.random.choice(a, round(n_sub_samples*(len(a)/n_samples)),
                     replace=self.replace) for a in classes] for k in l])
@@ -116,12 +104,28 @@ class RandomForest(object):
                 #     index_sub_samples = np.append(sorted(np.random.choice(classes[min_class],round(n_samples/2),replace=True)),
                 #         np.random.choice(classes[(min_class+1)%2],round(n_samples/2),replace=True))
                 index_oob_samples = np.delete(np.array(range(n_samples)),index_sub_samples) 
-
+            # Balanced Random Forests
             else:
-                index_sub_samples = sorted(np.random.choice(range(n_samples),n_sub_samples,replace=self.replace))
-            
+                #rus = RandomUnderSampler(ratio='majority',replacement=self.replace,random_state=self.random_state)
+                #X_res,y_res = rus.fit_sample(np.arange(n_samples).reshape(-1,1),[1 if yi == 'INSATISFATORIO' else 0 for yi in y])
+                #index_sub_samples = (X_res.reshape(-1))
+                # if(int(n_sub_samples/2) > len(classes[min_class_index])):
+                #     replace = True
+                # else:
+                #     replace = self.replace
+                index_sub_samples = sorted(np.random.choice(classes[min_class_index],len(classes[min_class_index]),replace=True))
+                for c in range(len(classes)):
+                    if(c != min_class_index):
+                        #if(n_sub_samples-int(n_sub_samples/2) > len(classes[c])):
+                        if(n_sub_samples-len(classes[min_class_index]) > len(classes[c])):
+                            replace = True
+                        else:
+                            replace = self.replace
+                        index_sub_samples = np.append(index_sub_samples, 
+                            sorted(np.random.choice(classes[c],n_sub_samples-len(classes[min_class_index]),replace=replace)))
+                #index_sub_samples = sorted(np.random.choice(range(n_samples),n_sub_samples,replace=self.replace))
                 index_oob_samples = np.delete(np.array(range(n_samples)),index_sub_samples)
-
+            
             self.oob.append(index_oob_samples)
 
             X_subset = X[index_sub_samples]
@@ -130,8 +134,8 @@ class RandomForest(object):
                 missing_branch=self.missing_branch, random_state=self.random_state+i)
             #tree.index = i
             tree.fit(X_subset,y_subset)
-            
             self.forest.append(tree)
+       
         # if out-of-bag error should be calculated
         if self.oob_error is True:
 
@@ -177,7 +181,6 @@ class RandomForest(object):
                     
             err = 0
             dif = 0
-
             # calculate the out-of-bag error
             for i in ypred.keys():
 
@@ -185,7 +188,15 @@ class RandomForest(object):
                 if(len(ypred[i]) > 1 and list(ypred[i].values())[0] == list(ypred[i].values())[1]):
                     yp = mode(y)[0][0]
                 else:
-                    yp = max(ypred[i].keys(), key= (lambda k: ypred[i][k]))
+                    if(self.balance is False or self.cutoff==0.5):
+                        yp = max(ypred[i].keys(), key= (lambda k: ypred[i][k]))
+                    else:
+                        s = sum(ypred[i].values())
+                        k = self.min_class
+                        if(k in ypred[i].keys() and ypred[i][k] > self.cutoff*s):
+                            yp = k
+                        else:
+                            yp = max(ypred[i].keys(), key= (lambda k: ypred[i][k]))
                 if(yp != y[i]):
                     err += 1
 
@@ -197,7 +208,7 @@ class RandomForest(object):
             #dif = dif / len(ypred.keys())
             #self.dif = dif
         
-        self.oob_error_ = err / len(set(oob_set))
+            self.oob_error_ = err / len(set(oob_set))
 
     def predict(self, X):
 
@@ -205,7 +216,7 @@ class RandomForest(object):
             X = [X]
             n_samples = 1
         else:
-            n_samples = X.shape[0]
+            n_samples = np.array(X).shape[0]
 
         n_trees = len(self.forest)
         predictions = np.empty(n_samples,dtype=object)
@@ -213,17 +224,17 @@ class RandomForest(object):
         for i in range(n_samples):
             ypreds = []
             for j in range(n_trees):
-                ypreds.append(self.forest[j].predict(X[i],self.prob))
+                ypreds.append(self.forest[j].predict(X[i],prob=False))
+            
             if(self.prob is False):
-                predictions[i] = mode(ypreds)[0][0]
+                if(self.balance is True and self.cutoff != 0.5 and 
+                    len([a[0] for a in ypreds if a[0] == self.min_class]) > self.cutoff*len(ypreds)):
+                    predictions[i] = self.min_class
+                else:
+                    predictions[i] = mode(ypreds)[0][0][0]
             else:
-                predictions[i] = {}
-                for ydict in ypreds:
-                    for c in ydict.keys():
-                        if c not in predictions[i].keys():
-                            predictions[i][c] = ydict[c]
-                        else:
-                            predictions[i][c] += ydict[c]
+                predictions[i] = {c:len([a[0] for a in ypreds if a[0] == c]) for c in set(self.y)}
+                
 
         return predictions
         
@@ -339,7 +350,6 @@ class RandomForest(object):
         if(vitype == 'auc'):
             ntreesc = 0
         else:
-
             ntreesc = self.ntrees
 
         variable_importance = {attribute: 0 for attribute in range(self.X.shape[1])}
@@ -374,3 +384,43 @@ class RandomForest(object):
             
         return {a:b/ntreesc for a,b in variable_importance.items()} 
 
+    # This method implements the d2 algorithm proposed in:
+    # Banerjee, M., Ding, Y., Noone, A. (2012). 
+    # Identifying representative trees from ensembles
+    def representative_trees(self,attributes):
+        print('Calculando árvores representativas...')
+        min_dif = 1
+        rep_trees = []
+        for t1 in range(self.ntrees):
+            for t2 in range(t1+1,self.ntrees):
+                dif = 0
+                c = 0
+                for i in range(self.X.shape[0]):
+                    if(i in self.oob[t2] or i in self.oob[t1]):
+                        continue
+                    pred = self.forest[t1].predict(self.X[i],prob=True)[0]
+                    y1 = pred[self.control_class]/sum(pred.values())
+                    pred2 = self.forest[t2].predict(self.X[i],prob=True)[0]
+                    y2 = pred2[self.control_class]/sum(pred.values())
+                    dif += (y1-y2)**2
+                    c += 1
+                dif = dif/c
+                if(dif <= min_dif):
+                    min_dif = dif
+                    rep_trees.append([t1,t2])
+        print(rep_trees)
+        print(min_dif)
+        printed = {}
+        c = 0
+        for t1,t2 in rep_trees:
+            if(t1 not in printed.keys()):
+                self.forest[t1].to_pdf(attributes,'tree'+str(t1)+'.pdf')
+                printed[t1] = True
+            if(t2 not in printed.keys()):
+                self.forest[t2].to_pdf(attributes,'tree'+str(t2)+'.pdf')
+                printed[t2] = True
+                c +=1
+            if(c > 30):
+                print('PAREI! Muita árvore pra crescer. Não dá não')
+                break
+        return rep_trees
