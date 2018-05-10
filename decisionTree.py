@@ -259,8 +259,8 @@ class DecisionTreeClassifier(object):
     def score(self, X, y,shuffle_attribute=None):
 
         y_predict = self.predict(X,prob=False,shuffle_attribute=shuffle_attribute)
-
         n_samples = len(y)
+
         correct = 0
         for i in range(n_samples):
             if y_predict[i] == y[i]:
