@@ -4,6 +4,7 @@ import numpy as np
 import read 
 import utils
 import math
+from sklearn.metrics import accuracy_score
 dummy = False
 transform = False
 use_text = False
@@ -102,6 +103,11 @@ assert(m.predict(['RAIN',80,70,'T']) == "Don't Play".upper())
 assert(m.predict(['SUNNY',50,50,'T']) == 'Play'.upper())
 assert(m.predict(['SUNNY',70,np.nan,'F']) == "Don't Play".upper())
 
+print('Testing Decision Tree score method...')
+
+assert(m.score([['RAIN',63,50,'T'],['SUNNY',66,90,'F'],['SUNNY',50,50,'T'],
+    ['OVERCAST',70,50,'F']], ['PLAY','PLAY','PLAY','PLAY']) == accuracy_score(m.predict(([['RAIN',63,50,'T'],['SUNNY',66,90,'F'],['SUNNY',50,50,'T'],
+    ['OVERCAST',70,50,'F']])), ['PLAY','PLAY','PLAY','PLAY']))
 
 print('Testing Random Forest...')
 
@@ -126,7 +132,7 @@ import pickle
 
 with open('saved_model.pickle','wb') as handle:
    pickle.dump(m,handle)
-print('...Testing if model was saved correctly...')
+print('Testing if model was saved correctly...')
 if(m.oob_error_ == 0.428571429):
     with open('saved_model.pickle', 'rb') as handle:
         m2 = pickle.load(handle)
@@ -135,17 +141,32 @@ if(m.oob_error_ == 0.428571429):
     assert(m.predict(['RAIN',74,81,'T']) == ["Don't Play".upper()])
 # print(m.predict(['Feminino',23,np.nan,'Não'],prob=True))
 # exit()
-
+print('Testing Random Forest score method...')
+assert(m.score([['RAIN',63,50,'T'],['SUNNY',66,90,'F'],['SUNNY',50,50,'T'],
+    ['OVERCAST',70,50,'F']], ['PLAY','PLAY','PLAY','PLAY']) == accuracy_score(clf.predict(([['RAIN',63,50,'T'],['SUNNY',66,90,'F'],['SUNNY',50,50,'T'],
+    ['OVERCAST',70,50,'F']])), ['PLAY','PLAY','PLAY','PLAY']))
 
 print('Done!')
 
-
-# data, attributes, categories  = read.readData(data_path = 'Dados/TestDissertation_with_nan.csv', class_name='Class',
+# from sklearn.model_selection import train_test_split
+# from sklearn.metrics import accuracy_score
+# data, attributes, categories  = read.readData(data_path = 'Dados/breast-cancer-wisconsin-prognosis.csv', class_name='outcome',
 #     dummy=dummy,transform_numeric=transform,use_text = use_text,missing_input='none')
 # X = data[:,0:-1]
 # y = np.array(data[:,-1])
-# m = dt.DecisionTreeClassifier(missing_branch=False)
-# m.fit(X,y)
+
+
+# X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=0,stratify=y)
+# #clf = rf.RandomForest(ntrees=50,oob_error=True,random_state=9,
+# #   mtry=math.sqrt,missing_branch=True,prob_answer=False,max_depth=None,replace=False,balance=False)
+# clf = rf.DecisionTreeClassifier()
+# clf.fit(X_train,y_train)
+# #print(1-clf.oob_error_)
+# print(clf.score(X_test,y_test))
+# print(accuracy_score(y_test,clf.predict(X_test)))
+
+
+#test_size=0.2,random_state=9)
 
 # exercise_index = np.where(attributes == 'Exercício?')[0][0]
 # feature_index = exercise_index
