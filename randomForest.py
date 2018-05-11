@@ -390,7 +390,7 @@ class RandomForest(object):
     def representative_trees(self,attributes):
         print('Calculando árvores representativas...')
         min_dif = 1
-        rep_trees = []
+        rep_trees = {i: 0 for i in range(self.ntrees)}
         for t1 in range(self.ntrees):
             for t2 in range(t1+1,self.ntrees):
                 dif = 0
@@ -405,22 +405,12 @@ class RandomForest(object):
                     dif += (y1-y2)**2
                     c += 1
                 dif = dif/c
-                if(dif <= min_dif):
-                    min_dif = dif
-                    rep_trees.append([t1,t2])
-        print(rep_trees)
-        print(min_dif)
-        printed = {}
-        c = 0
-        for t1,t2 in rep_trees:
-            if(t1 not in printed.keys()):
-                self.forest[t1].to_pdf(attributes,'tree'+str(t1)+'.pdf')
-                printed[t1] = True
-            if(t2 not in printed.keys()):
-                self.forest[t2].to_pdf(attributes,'tree'+str(t2)+'.pdf')
-                printed[t2] = True
-                c +=1
-            if(c > 30):
-                print('PAREI! Muita árvore pra crescer. Não dá não')
-                break
+                rep_trees[t1] += dif
+                rep_trees[t2] += dif
+        
+
+        reps = [a for a in rep_trees.keys() if rep_trees[a] == min(rep_trees.values())]
+        print(reps)
+        for r in reps:
+            self.forest[r].to_pdf(out='representative_tree_'+str(r)+'.pdf',attributes=attributes)
         return rep_trees
