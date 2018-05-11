@@ -15,6 +15,10 @@ def boxplot(collections,attributes,title=None):
     ax = plt.axes()
     ax.boxplot(collections)
     ax.set_xticklabels(attributes,rotation=90,size='small')
+    x1,x2,y1,y2 = plt.axis()
+    if(y2 <= 0.01):
+        y2 = 0.01
+    plt.axis((x1,x2,y1,y2))
     plt.tight_layout()
     plt.xlabel('features')
     plt.ylabel('feature importances')
@@ -22,23 +26,35 @@ def boxplot(collections,attributes,title=None):
         plt.title(title)
         plt.savefig('boxplot_'+title+'.png')
         plt.close()
-
-    plt.show()
+        f = open('boxplot_data_'+title+'.txt', 'w')
+        f.write('collections = %r \n' % collections)
+        f.write('attributes = np.%r \n' % attributes)
+    else:
+        plt.show()
+        print(collections)
+    
 
 def plot_feature_importance_vs_accuracy(xvalues,yvalues,xlabel='threshold',title=None,special=None):
     ax = plt.subplot(111)    
-    ax.scatter(xvalues,yvalues,marker='x',s=60)
+    #ax.scatter(xvalues,yvalues,marker='x',s=60)
+    ax.plot(xvalues,yvalues,'x-')
     if(special is not None):
         ax.scatter(xvalues[special],yvalues[special],marker='x',s=60,color='red',linewidths=3)
-
+    
+    plt.axis((-0.005,0.007,0.6,0.85))
     plt.xlabel(xlabel)
-    plt.ylabel('oob error')
- 
+    plt.ylabel('accuracy (1 - OOB error)')
+    
     if(title):
         plt.title(title)
-        plt.savefig('scatter_plot_'+title+'.png')
+        plt.savefig('threshold_accuracy_plot_'+title+'.png')
         plt.close()
-    plt.show()
+        f = open('threshold_accuracy_data_'+title+'.txt', 'w')
+        f.write('xvalues= %r \nyvalues= %r \nspecial= %r' % (xvalues,yvalues,special))       
+    else:
+        plt.show()
+        print(xvalues,yvalues)
+        print('special: %r' % special)
 
 def plot_mean_feature_contribution(clf,attributes):
     try:
@@ -455,10 +471,10 @@ def plot_randomforest_accuracy(X,y,attributes,ntrees,replace,mtry,max_depth,miss
     missing_branch_dict = {}
     missing_c45 = []
     seeds = []
-    #for i in range(ntimes):
-    for seed in range(0,1000,50):
-        #seed = np.random.randint(100000)
-        print('seed: %r' % seed)
+    for i in range(ntimes):
+    #for seed in range(0,1000,50):
+        seed = np.random.randint(100000)
+        #print('seed: %r' % seed)
         clf = rf.RandomForest(ntrees=ntrees,mtry=mtry,missing_branch=missing_branch,prob_answer=False,max_depth=max_depth,replace=replace,random_state=seed)
         clf.fit(X,y)
 
