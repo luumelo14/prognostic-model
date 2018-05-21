@@ -185,7 +185,8 @@ class RandomForest(object):
             for i in ypred.keys():
 
                 #in case of a tie, assign the class that appears the most in the training set
-                if(len(ypred[i]) > 1 and list(ypred[i].values())[0] == list(ypred[i].values())[1]):
+                if(self.cutoff==0.5 and len(ypred[i]) > 1 and 
+                    list(ypred[i].values())[0] == list(ypred[i].values())[1]):
                     yp = mode(y)[0][0]
                 else:
                     if(self.balance is False or self.cutoff==0.5):
@@ -210,8 +211,10 @@ class RandomForest(object):
         
             self.oob_error_ = err / len(set(oob_set))
 
-    def predict(self, X):
+    def predict(self, X,prob=None):
 
+        if(prob is None):
+            prob = self.prob
         if(len(np.array(X).shape)) == 1: 
             X = [X]
             n_samples = 1
@@ -226,7 +229,7 @@ class RandomForest(object):
             for j in range(n_trees):
                 ypreds.append(self.forest[j].predict(X[i],prob=False))
             
-            if(self.prob is False):
+            if(prob is False):
                 if(self.balance is True and self.cutoff != 0.5 and 
                     len([a[0] for a in ypreds if a[0] == self.min_class]) > self.cutoff*len(ypreds)):
                     predictions[i] = self.min_class
@@ -243,8 +246,7 @@ class RandomForest(object):
     def score(self, X, y):
 
         y_predict = self.predict(X)
-        if(self.prob is True):
-            y_predict = max(y_predict.keys(), key=lambda k: y_predict[k])
+     
         n_samples = len(y)
         if(isinstance(y,str)):
             y = [y]
@@ -262,13 +264,15 @@ class RandomForest(object):
     # Interpreting random forest models using a feature contribution method. 
     # In 2013 IEEE 14th International Conference on Information Reuse and Integration (pp. 112–119). 
     # Retrieved from http://eprints.whiterose.ac.uk/79159/1/feature_contribution_camera_ready.pdf
-    def feature_contribution(self):
+    def feature_contribution(self,X=None):
         print('calculating feature contribution')
+        C = set(self.y)
+        if(X == None):
+            X = self.X
 
         fcs = []
-        C = set(self.y)
 
-        for i in range(self.X.shape[0]):
+        for i in range(X.shape[0]):
 
             FC = {}
             c = 0
@@ -299,7 +303,7 @@ class RandomForest(object):
                             if(f not in FC.keys()):
                                 FC[f] =  {c:0 for c in C}
 
-                            if(utils.isnan(self.X[i][f])):
+                            if(utils.isnan(X[i][f])):
                                 if(parent.branch_nan is None):
                                     sp = sum(parent.distr.values())
                                     for c in parent.branches:
@@ -309,17 +313,31 @@ class RandomForest(object):
                                     child = parent.branch_nan
                             else:
                                 if(len(parent.values) == 1):
-                                    if self.X[i][f] <= parent.values[0]:
+                                    if X[i][f] <= parent.values[0]:
                                         child = parent.branches[0]
                                     else:
                                         child = parent.branches[1]
                                 else:
-                                    child = parent.branches[parent.values.index(str(self.X[i][f]))]
+                                    if(str(X[i][f]) not in parent.values):
+                                        if(parent.branch_nan is None):
+                                            sp = sum(parent.distr.values())
+                                            for c in parent.branches:
+                                                child_list.append([round(w*(sum(c.distr.values()))/sp,2),c])
+                                            w,child = child_list.pop(0)
+                                        else:
+                                            child = parent.branch_nan
+
+                                    else:
+
+                                        child = parent.branches[parent.values.index(str(X[i][f]))]
 
 
                             sc = sum(child.distr.values())
+                            if(sc == 0):
+                                child.distr = t.root.distr
+                                sc = sum(child.distr.values())
                             sp = sum(parent.distr.values())
-                            
+
                             FC[f][k] = FC[f][k] + w*(child.distr[k]/sc - parent.distr[k]/sp)
 
                             parent = child
@@ -387,7 +405,7 @@ class RandomForest(object):
     # This method implements the d2 algorithm proposed in:
     # Banerjee, M., Ding, Y., Noone, A. (2012). 
     # Identifying representative trees from ensembles
-    def representative_trees(self,attributes):
+    def representative_trees(self,attributes,title):
         print('Calculando árvores representativas...')
         min_dif = 1
         rep_trees = {i: 0 for i in range(self.ntrees)}
@@ -409,8 +427,8 @@ class RandomForest(object):
                 rep_trees[t2] += dif
         
 
-        reps = [a for a in rep_trees.keys() if rep_trees[a] == min(rep_trees.values())]
+        reps = [a for a in rep_trees.keys() if rep_trees[a] in sorted(rep_trees.values())[0:5]]
         print(reps)
         for r in reps:
-            self.forest[r].to_pdf(out='representative_tree_'+str(r)+'.pdf',attributes=attributes)
+            self.forest[r].to_pdf(out='representative_tree_'+str(r)+title+'.pdf',attributes=attributes)
         return rep_trees
