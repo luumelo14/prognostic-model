@@ -9,8 +9,8 @@ import plot
 from sklearn import  tree
 import randomForest as rf
 import decisionTree as dt
-import MTdecisionTree as mtdt
-import MTrandomForest as mtrf
+#import MTdecisionTree as mtdt
+#import MTrandomForest as mtrf
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.ensemble import AdaBoostClassifier
 #from sklearn.metrics import accuracy_score, classification_report
@@ -260,7 +260,7 @@ def compare_models(X,y,class_name,transform=False,scale=False,n_splits=10,test_s
 
             clf.fit(Xtrain,ytrain)
 
-             slg = clf.score(Xval,[(yv) for yv in (yval)])
+            slg = clf.score(Xval,[(yv) for yv in (yval)])
             clf_scores.append(slg)    
 
             if slg > maxl:
@@ -357,7 +357,7 @@ def check_other_participants(filename):
             print(participant)
     print(len(p))
 
-data_paths = [['DorCirurgiaCategNA.csv','Q92510_snDorPos'],['DorCirurgiaCategNAReduzido.csv','Q92510_snDorPos'],
+data_paths = [['../DorCirurgiaCategNAReduzido.csv','Q92510_snDorPos'],
 ['AbdOmbroCirurgiaCategNA.csv','Q92510_opcForca[AbdOmbro]'],['AbdOmbroCategNAReduzido.csv','Q92510_opcForca[AbdOmbro]'],
 ['FlexCotoveloCategNA.csv','Q92510_opcForca[FlexCotovelo]'],['FlexCotoveloCirurgiaCategNAReduzido.csv','Q92510_opcForca[FlexCotovelo]'],
 ['RotEOmbroCirurgiaCategNA.csv','Q92510_opcForca[RotEOmbro]'],['RotEOmbroCirurgiaCategNAReduzido.csv','Q92510_opcForca[RotEOmbro]']]
@@ -408,7 +408,7 @@ for data_path,class_name in data_paths:
 
 
     ntimes = 5
-    ntrees = 5
+    ntrees = 500
     replace = False
     mtry = math.sqrt
     max_depth = None
@@ -418,24 +418,24 @@ for data_path,class_name in data_paths:
     # plot.plot_randomforest_accuracy(X,y,original_attributes,ntrees,replace,mtry,max_depth,missing_branch,ntimes,title=data_path+'mb=T e ntrees=15001')
     # exit()
 
-    print('--------------- MODEL: %r DATA PATH: %r' % (class_name, data_path))
-    clf = feature_selection_threshold(X,y,original_attributes,ntrees,replace,mtry,max_depth,missing_branch,ntimes=ntimes,
-        missing_rate=True,title=None)
-    with open('prognostic_model_'+ '_' + data_path[:-4] + '_mrate=T_notapplicable=T'+'.pickle','wb') as handle:
-        pickle.dump(clf,handle)
+    # print('--------------- MODEL: %r DATA PATH: %r' % (class_name, data_path))
+    # clf = feature_selection_threshold(X,y,original_attributes,ntrees,replace,mtry,max_depth,missing_branch,ntimes=ntimes,
+    #     missing_rate=True,title=None)
+    # with open('prognostic_model_'+ '_' + data_path[:-4] + '_mrate=T_notapplicable=T'+'.pickle','wb') as handle:
+    #     pickle.dump(clf,handle)
     # with open('prognostic_model_'+ '_' + data_path[:-4] + '.pickle', 'rb') as handle:
     #     clf1 = pickle.load(handle)
 
-    print(1-clf.oob_error_)
+    #print(1-clf.oob_error_)
     # exit()
 
     # attributes = np.array(['Q44071_snDorPos', 'Q44071_opcLcSensor[C7]','Q44071_opcLcSensTatil[C6]','Q44071_opcForca[FlexDedos]','Q61802_opctransferencias[SQ003]',
     # 'Q44071_lisLcLPB[C]','Q44071_opcLcSensor[C8]','Q44071_lisMedicAt[outros1_Nome]','Q44071_snFxPr', 'Q44071_opcLcSensTatil[C8]', 
     # 'Q44071_opcLcSensTatil[T2]', 'Q44071_opcLcSensor[C6]', 'Q44071_snAuxilioAt', 'Q44071_snFxAt','Q44071_snCplexoAt'])#,'participant code'])
-
-    #  clf1 = rf.RandomForest(ntrees=ntrees,oob_error=True,random_state=seed,
-    #     mtry=mtry,missing_branch=missing_branch,prob_answer=False,max_depth=max_depth,replace=replace,balance=True)
-    # # # print('Fitting random forest...')
+    t = time.time()
+    clf1 = rf.RandomForest(ntrees=ntrees,oob_error=True,random_state=seed,
+        mtry=mtry,missing_branch=missing_branch,prob_answer=False,max_depth=max_depth,replace=replace,balance=True)
+    print('Fitting random forest...')
     # attributes_indexes = np.array([np.where(original_attributes == a)[0][0] for a in attributes])
     # Xn = X[:,attributes_indexes]
     # ftc = np.where(original_attributes == 'Q61802_formTempoCirurg')[0][0]
@@ -445,8 +445,9 @@ for data_path,class_name in data_paths:
     #         if(X[i][f] == 'N'):
     #             Xn[i][-1] = 'S'
 
-    # clf1.fit(Xn,y)
-    # print(1-clf1.oob_error_)
+    clf1.fit(X,y)
+    print(time.time() - t)
+    print(1-clf1.oob_error_)
     # if 'Dor' in class_name:
     #     clf1.control_class = 'N'
     # else:

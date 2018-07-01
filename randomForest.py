@@ -11,7 +11,7 @@ import utils
 import decisionTree as dt
 import time
 from math import ceil
-from imblearn.under_sampling import RandomUnderSampler
+from joblib import Parallel, delayed
 
 class RandomForest(object):
 
@@ -86,76 +86,30 @@ class RandomForest(object):
 
         #print('Creating trees...')
         # for each tree
-        for i in range(self.ntrees):
-
-            np.random.seed(self.random_state+i)
-            # select same proportion of instances from each class
-            if(self.balance is False):
-                # select indexes of sub samples considering class balance    
-                index_sub_samples = sorted([k for l in [np.random.choice(a, round(n_sub_samples*(len(a)/n_samples)),
-                    replace=self.replace) for a in classes] for k in l])
-                # if(self.replace is False):
-                #     index_sub_samples = sorted(np.random.choice(subsets[(i%nsubsets)],round(n_samples*self.bootstrap),replace=False))
-                #     index_oob_samples = np.delete(np.array(subsets[(i%nsubsets)]),index_sub_samples)
-                #     print(index_sub_samples)
-                #     print(index_oob_samples)
-                #     exit()
-                # else:
-                #     index_sub_samples = np.append(sorted(np.random.choice(classes[min_class],round(n_samples/2),replace=True)),
-                #         np.random.choice(classes[(min_class+1)%2],round(n_samples/2),replace=True))
-                index_oob_samples = np.delete(np.array(range(n_samples)),index_sub_samples) 
-            # Balanced Random Forests
-            else:
-                #rus = RandomUnderSampler(ratio='majority',replacement=self.replace,random_state=self.random_state)
-                #X_res,y_res = rus.fit_sample(np.arange(n_samples).reshape(-1,1),[1 if yi == 'INSATISFATORIO' else 0 for yi in y])
-                #index_sub_samples = (X_res.reshape(-1))
-                # if(int(n_sub_samples/2) > len(classes[min_class_index])):
-                #     replace = True
-                # else:
-                #     replace = self.replace
-                index_sub_samples = sorted(np.random.choice(classes[min_class_index],len(classes[min_class_index]),replace=True))
-                for c in range(len(classes)):
-                    if(c != min_class_index):
-                        #if(n_sub_samples-int(n_sub_samples/2) > len(classes[c])):
-                        if(n_sub_samples-len(classes[min_class_index]) > len(classes[c])):
-                            replace = True
-                        else:
-                            replace = self.replace
-                        index_sub_samples = np.append(index_sub_samples, 
-                            sorted(np.random.choice(classes[c],n_sub_samples-len(classes[min_class_index]),replace=replace)))
-                #index_sub_samples = sorted(np.random.choice(range(n_samples),n_sub_samples,replace=self.replace))
-                index_oob_samples = np.delete(np.array(range(n_samples)),index_sub_samples)
-            
-            self.oob.append(index_oob_samples)
-
-            X_subset = X[index_sub_samples]
-            y_subset = y[index_sub_samples]
-            tree = dt.DecisionTreeClassifier(max_depth=self.max_depth,mtry=self.mtry,
-                missing_branch=self.missing_branch, random_state=self.random_state+i)
-            #tree.index = i
-            tree.fit(X_subset,y_subset)
-            self.forest.append(tree)
+        self.forest = Parallel(n_jobs=3)(delayed(self.create_trees)(n_samples, n_sub_samples, classes, min_class_index, t, X, y) for t in range(self.ntrees))
+        print('end!')
        
         # if out-of-bag error should be calculated
         if self.oob_error is True:
-
             #print('Calculating oob error...')
             # set of all intances that belong to at least one out-of-bag set
-            oob_set = set([j for i in self.oob for j in i])
+            oob_set = set([j for i in self.forest for j in i.oob])
 
             ypred = {}
 
             # for each tree 
-            for t in range(self.ntrees):
+            for t in self.forest:
                 # error counting
                 err = 0
                 # for each instance at the tree out-of-bag set
-                for i in self.oob[t]:
+                #for i in self.oob[t]:
+            
+                for i in t.oob:
                     if i not in ypred:
                         ypred[i] = {}
 
                     # predict the class (or the class distribution) for instance X[i]
-                    tmp = self.forest[t].predict(X[i].reshape(1,-1),self.prob)[0]
+                    tmp = t.predict(X[i].reshape(1,-1),self.prob)[0]
                     # in case of class prediction (not distribution)
                     if(self.prob is False):
                         # add a vote for class "tmp"
@@ -178,7 +132,7 @@ class RandomForest(object):
                             yp = max(ypred[i].keys(), key= (lambda k: ypred[i][k]))
                             if(yp != y[i]):
                                 err += 1
-                    
+                
             err = 0
             dif = 0
             # calculate the out-of-bag error
@@ -210,6 +164,56 @@ class RandomForest(object):
             #self.dif = dif
         
             self.oob_error_ = err / len(set(oob_set))
+
+    def create_trees(self, n_samples, n_sub_samples, classes, min_class_index,i,X,y):
+
+        np.random.seed(self.random_state+i)
+        # select same proportion of instances from each class
+        if(self.balance is False):
+            # select indexes of sub samples considering class balance    
+            index_sub_samples = sorted([k for l in [np.random.choice(a, round(n_sub_samples*(len(a)/n_samples)),
+                replace=self.replace) for a in classes] for k in l])
+            # if(self.replace is False):
+            #     index_sub_samples = sorted(np.random.choice(subsets[(i%nsubsets)],round(n_samples*self.bootstrap),replace=False))
+            #     index_oob_samples = np.delete(np.array(subsets[(i%nsubsets)]),index_sub_samples)
+            #     print(index_sub_samples)
+            #     print(index_oob_samples)
+            #     exit()
+            # else:
+            #     index_sub_samples = np.append(sorted(np.random.choice(classes[min_class],round(n_samples/2),replace=True)),
+            #         np.random.choice(classes[(min_class+1)%2],round(n_samples/2),replace=True))
+            index_oob_samples = np.delete(np.array(range(n_samples)),index_sub_samples) 
+        # Balanced Random Forests
+        else:
+            #rus = RandomUnderSampler(ratio='majority',replacement=self.replace,random_state=self.random_state)
+            #X_res,y_res = rus.fit_sample(np.arange(n_samples).reshape(-1,1),[1 if yi == 'INSATISFATORIO' else 0 for yi in y])
+            #index_sub_samples = (X_res.reshape(-1))
+            # if(int(n_sub_samples/2) > len(classes[min_class_index])):
+            #     replace = True
+            # else:
+            #     replace = self.replace
+            index_sub_samples = sorted(np.random.choice(classes[min_class_index],len(classes[min_class_index]),replace=True))
+            for c in range(len(classes)):
+                if(c != min_class_index):
+                    #if(n_sub_samples-int(n_sub_samples/2) > len(classes[c])):
+                    if(n_sub_samples-len(classes[min_class_index]) > len(classes[c])):
+                        replace = True
+                    else:
+                        replace = self.replace
+                    index_sub_samples = np.append(index_sub_samples, 
+                        sorted(np.random.choice(classes[c],n_sub_samples-len(classes[min_class_index]),replace=replace)))
+            #index_sub_samples = sorted(np.random.choice(range(n_samples),n_sub_samples,replace=self.replace))
+            index_oob_samples = np.delete(np.array(range(n_samples)),index_sub_samples)
+        
+
+        X_subset = X[index_sub_samples]
+        y_subset = y[index_sub_samples]
+        tree = dt.DecisionTreeClassifier(max_depth=self.max_depth,mtry=self.mtry,
+            missing_branch=self.missing_branch, random_state=self.random_state+i)
+        tree.oob = index_oob_samples
+        #tree.index = i
+        tree.fit(X_subset,y_subset)
+        return tree #self.forest.append(tree)
 
     def predict(self, X,prob=None):
 
@@ -371,10 +375,9 @@ class RandomForest(object):
             ntreesc = self.ntrees
 
         variable_importance = {attribute: 0 for attribute in range(self.X.shape[1])}
-        for t in range(self.ntrees):
-
+        for t in self.forest:
                 #print(self.forest[t].attributes_in_tree)
-            for m in self.forest[t].feature_indices:
+            for m in t.feature_indices:
 
 
                 X_permuted = self.X.copy() 
@@ -388,15 +391,15 @@ class RandomForest(object):
                 # import pdb
                 # pdb.set_trace()
                 if(vitype == 'auc'):
-                    if(len(set(y[self.oob[t]])) > 1):
+                    if(len(set(y[t.oob])) > 1):
                         ntreesc += 1
-                        auc_before = self.forest[t].auc(self.X[self.oob[t]],y[self.oob[t]],shuffle_attribute=None,control_class=self.control_class)
-                        auc = self.forest[t].auc(X_permuted[self.oob[t]],y[self.oob[t]],shuffle_attribute=sa,control_class=self.control_class)
+                        auc_before = t.auc(self.X[t.oob],y[t.oob],shuffle_attribute=None,control_class=self.control_class)
+                        auc = t.auc(X_permuted[t.oob],y[t.oob],shuffle_attribute=sa,control_class=self.control_class)
                         variable_importance[m] += auc_before - auc
 
                 else:    
-                    err = 1-self.forest[t].score(self.X[self.oob[t]],y[self.oob[t]],shuffle_attribute=None)
-                    err_permuted = 1 - self.forest[t].score(X_permuted[self.oob[t]], y[self.oob[t]],shuffle_attribute=sa)
+                    err = 1-t.score(self.X[t.oob],y[t.oob],shuffle_attribute=None)
+                    err_permuted = 1 - t.score(X_permuted[t.oob], y[t.oob],shuffle_attribute=sa)
                     variable_importance[m] += (err_permuted - err)
 
             
