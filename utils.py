@@ -48,6 +48,14 @@ def firstNotNan(df):
                 break
     return i
 
+def notNanProportion(df):
+    c = 0
+    for i in df:
+        if(not isnan(i)):
+            c += 1
+    return c/len(df)
+
+
 def isnum(a):
     return isint(a) or isfloat(a)
 
