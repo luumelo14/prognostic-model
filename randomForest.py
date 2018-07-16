@@ -87,7 +87,6 @@ class RandomForest(object):
         #print('Creating trees...')
         # for each tree
         self.forest = Parallel(n_jobs=3)(delayed(self.create_trees)(n_samples, n_sub_samples, classes, min_class_index, t, X, y) for t in range(self.ntrees))
-        print('end!')
        
         # if out-of-bag error should be calculated
         if self.oob_error is True:
@@ -205,7 +204,6 @@ class RandomForest(object):
             #index_sub_samples = sorted(np.random.choice(range(n_samples),n_sub_samples,replace=self.replace))
             index_oob_samples = np.delete(np.array(range(n_samples)),index_sub_samples)
         
-
         X_subset = X[index_sub_samples]
         y_subset = y[index_sub_samples]
         tree = dt.DecisionTreeClassifier(max_depth=self.max_depth,mtry=self.mtry,
@@ -287,7 +285,7 @@ class RandomForest(object):
                 #     pdb.set_trace()
                 
                 for t in self.forest:
-                    if(i in self.oob[t_index]):
+                    if(i in self.forest[t_index].oob):
                         #print(oob[t_index])
                         t_index+=1
                         continue
@@ -417,7 +415,7 @@ class RandomForest(object):
                 dif = 0
                 c = 0
                 for i in range(self.X.shape[0]):
-                    if(i in self.oob[t2] or i in self.oob[t1]):
+                    if(i in self.forest[t2].oob or i in self.forest[t1].oob):
                         continue
                     pred = self.forest[t1].predict(self.X[i],prob=True)[0]
                     y1 = pred[self.control_class]/sum(pred.values())
