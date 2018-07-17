@@ -31,7 +31,7 @@ def readData(class_name,class_questionnaire='Q92510',data_path=None,missing_inpu
 
 	print('Reading data...')
 	data = pd.read_csv(data_path, header=0, delimiter=",",
-		na_values=['N/A', 'None','nan','NAAI','NINA'], quoting=0, encoding='utf8', mangle_dupe_cols=False)
+		na_values=['N/A', 'None','nan','NAAI','NINA'], quoting=0, encoding='utf8')
 
 	if(not transform_numeric):
 		dummy = False
