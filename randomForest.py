@@ -86,7 +86,7 @@ class RandomForest(object):
 
         #print('Creating trees...')
         # for each tree
-        self.forest = Parallel(n_jobs=3)(delayed(self.create_trees)(n_samples, n_sub_samples, classes, min_class_index, t, X, y) for t in range(self.ntrees))
+        self.forest = Parallel(n_jobs=-2)(delayed(self.create_trees)(n_samples, n_sub_samples, classes, min_class_index, t, X, y) for t in range(self.ntrees))
        
         # if out-of-bag error should be calculated
         if self.oob_error is True:
