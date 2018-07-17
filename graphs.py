@@ -1,6 +1,7 @@
 # this script was used to generate the graphs for my master's dissertation, with excpetion of the pie plots (fig 4.1 and fig 4.4),
 # which was generated through this website: https://nces.ed.gov/nceskids/createagraph/ 
-
+import matplotlib 
+matplotlib.use('agg')
 import matplotlib.pyplot as plt
 import read
 import utils

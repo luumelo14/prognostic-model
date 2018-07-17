@@ -3,6 +3,8 @@ import randomForest as rf
 import pandas as pd  
 import numpy as np
 from collections import Counter
+import matplotlib 
+matplotlib.use('agg')
 import matplotlib.pyplot as plt
 import math
 import utils

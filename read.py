@@ -4,7 +4,6 @@ import re
 from sklearn import preprocessing
 from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
 import os
-import matplotlib.pyplot as plt
 import utils
 
 #import preprocess as pp
