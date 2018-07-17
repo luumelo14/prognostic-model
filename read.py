@@ -2,10 +2,8 @@ import pandas as pd
 import numpy as np
 import re
 from sklearn import preprocessing
-from stop_words import get_stop_words
 from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
 import os
-from wordcloud import WordCloud
 import matplotlib.pyplot as plt
 import utils
 
