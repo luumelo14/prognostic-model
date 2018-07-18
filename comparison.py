@@ -395,7 +395,7 @@ for data_path,class_name in data_paths:
         ytrain = np.concatenate([y[0:i],y[i+1:]])
         #clf1.fit(np.concatenate([X[0:i],X[i+1:]]),np.concatenate([y[0:i],y[i+1:]]))
         clf1 = feature_selection_threshold(Xtrain,ytrain,original_attributes,ntrees,replace,mtry,max_depth,missing_branch,balance,
-           cutoff,ntimes=ntimes,title=None,missing_rate=True,vitype=vitype,vimissing=True,backwards=True)
+           cutoff,ntimes=ntimes,title=class_name,missing_rate=True,vitype=vitype,vimissing=True,backwards=True)
         
         if(y[i] == 'SUCESSO'):
             if(clf1.predict(X[i]) == 'SUCESSO'):
