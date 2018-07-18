@@ -44,7 +44,7 @@ def feature_selection_threshold(X,y,attributes,ntrees,replace,mtry,max_depth,mis
     ordered_features = [a[0] for a in sorted(vis,key=lambda x:np.mean(x[1]),reverse=reverse)]
     thresholds =  [round(np.mean(vis[a][1]),10) for a in ordered_features]
     threshold_values = sorted([round(a,10) for a in set(thresholds)],reverse=reverse)
-    print(sorted([(attributes[a[0]],round(np.mean(a[1]),10)) for a in vis],key=lambda x: x[1],reverse=True))
+    #print(sorted([(attributes[a[0]],round(np.mean(a[1]),10)) for a in vis],key=lambda x: x[1],reverse=True))
  
     stop_indexes = []
     scores = []
@@ -82,11 +82,14 @@ def feature_selection_threshold(X,y,attributes,ntrees,replace,mtry,max_depth,mis
         #print((attributes[ordered_features[0:len(ordered_features)-old_index]]))
         print(scores[old_index])
 
-    print('Best 1 s.e. set of features:')
+    #print('Best 1 s.e. set of features:')
     stdm = sem(scores)
-    indexes= np.where(np.array(scores) == scores[((np.abs(np.array(scores)-(max(scores)-stdm))).argmin())])[0]
-    index = indexes[0]
-    print(scores[index])
+    indexes= np.where(np.array(scores) == scores[((np.abs(np.array([a for a in scores if a != max(scores)])-(max(scores)-stdm))).argmin())])[0]
+    index = [threshold_values[a] for a in indexes].argmax()
+    print('Indexes: %r' % indexes)
+    print('Threshold values: %r' % threshold_values)
+    print('Index chosen: %r' % index)
+    #print(scores[index])
     
     #index = indexes[int(len(indexes)/2)]
     #index = max(indexes,key=lambda x: stop_indexes[x])
@@ -101,13 +104,13 @@ def feature_selection_threshold(X,y,attributes,ntrees,replace,mtry,max_depth,mis
     clf.attributes = attributes[get_slice(ordered_features,stop_indexes[index])]
     clf.fit(X[:,get_slice(ordered_features,stop_indexes[index])],y)
 
-    print('OOB ERROR: %r' % (1-clf.oob_error_))
-    print('threshold: >= %r' % threshold_values[index])
+    #print('OOB ERROR: %r' % (1-clf.oob_error_))
+    #print('threshold: >= %r' % threshold_values[index])
     importance_values = [[round(np.mean(aa),10) for aa in a[1]] for a in vis if round(np.mean(a[1]),10) >= threshold_values[index]]
     features =  attributes[[a[0] for a in vis if round(np.mean(a[1]),10) >= threshold_values[index]]]
 
-    plot.boxplot(importance_values,features,title)
-    plot.plot_feature_importance_vs_accuracy(threshold_values,scores,xlabel='threshold',title=title,special=index)
+    #plot.boxplot(importance_values,features,title)
+    #plot.plot_feature_importance_vs_accuracy(threshold_values,scores,xlabel='threshold',title=title,special=index)
     
     return clf
 
@@ -335,9 +338,9 @@ def check_other_participants(filename):
             print(participant)
     print(len(p))
 
-#data_paths = [['../DorCirurgiaCategNAReduzido.csv','Q92510_snDorPos'],
-#['../AbdOmbroCirurgiaCategNAReduzido.csv','Q92510_opcForca[AbdOmbro]'],
-data_paths=[['../FlexCotoveloCirurgiaCategNAReduzido.csv','Q92510_opcForca[FlexCotovelo]'],
+data_paths = [['../DorCirurgiaCategNAReduzido.csv','Q92510_snDorPos'],
+['../AbdOmbroCirurgiaCategNAReduzido.csv','Q92510_opcForca[AbdOmbro]'],
+['../FlexCotoveloCirurgiaCategNAReduzido.csv','Q92510_opcForca[FlexCotovelo]'],
 ['../RotEOmbroCirurgiaCategNAReduzido.csv','Q92510_opcForca[RotEOmbro]']]
 
 class_questionnaire = 'Q92510'
@@ -372,6 +375,7 @@ for data_path,class_name in data_paths:
     seed =  89444   
     cutoff=0.5
     balance =False
+    vitype = 'auc'
 
     print('--------------- MODEL: %r DATA PATH: %r' % (class_name, data_path))
     # if('Ombro' in data_path):
@@ -382,14 +386,17 @@ for data_path,class_name in data_paths:
     #     cutoff,ntimes=ntimes, missing_rate=True,title=class_name,backwards=True,vitype=vitype)
     # with open('prognostic_model_'+ '_' + data_path[3:-4] +'.pickle','wb') as handle:
     #     pickle.dump(clf,handle)
-    with open('prognostic_model__FlexCotoveloCirurgiaCategNAReduzido_mrate=T_vitype=AUC_backwards=T_lasts.pickle', 'rb') as handle:
-        clf1 = pickle.load(handle)
 
     scores = 0
     ivp,ifp,ifn,ivn,svp,sfp,sfn,svn = 0,0,0,0,0,0,0,0 
     print(1-clf1.oob_error_)
     for i in range(X.shape[0]):
-        clf1.fit(np.concatenate([X[0:i],X[i+1:]]),np.concatenate([y[0:i],y[i+1:]]))
+        Xtrain  = np.concatenate([X[0:i],X[i+1:]])
+        ytrain = np.concatenate([y[0:i],y[i+1:]])
+        #clf1.fit(np.concatenate([X[0:i],X[i+1:]]),np.concatenate([y[0:i],y[i+1:]]))
+        clf1 = feature_selection_threshold(Xtrain,ytrain,attributes,ntrees,replace,mtry,max_depth,missing_branch,balance,
+            cutoff,ntimes=ntimes,title=None,missing_rate=True,vitype=vitype,vimissing=True,backwards=True):
+        
         if(y[i] == 'SUCESSO'):
             if(clf1.predict(X[i]) == 'SUCESSO'):
                 svp+=1
