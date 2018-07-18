@@ -365,8 +365,8 @@ for data_path,class_name in data_paths:
     # with open('prognostic_model_'+ class_name[7:] + '_' + data_path[:-4] + '.pickle', 'rb') as handle:
     #     clf = pickle.load(handle)
 
-    ntimes = 2
-    ntrees = 5
+    ntimes = 25
+    ntrees = 5001
     replace = False
     mtry = math.sqrt
     max_depth = None
@@ -427,7 +427,7 @@ for data_path,class_name in data_paths:
         f = (2*p*c)/(p+c)
     print('INSATISFATÓRIO --- cobertura: %r precisão: %r medida-F: %r ' % (c,p,f))
 
-    exit()  
+
 
   
 
