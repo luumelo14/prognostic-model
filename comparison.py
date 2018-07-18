@@ -27,7 +27,7 @@ import pickle
 # Variable selection using random forests. Pattern Recogn. Lett. 31, 14 (October 2010), 2225-2236. 
 # DOI=http://dx.doi.org/10.1016/j.patrec.2010.03.014  
 def feature_selection_threshold(X,y,attributes,ntrees,replace,mtry,max_depth,missing_branch,balance,
-    cutoff,ntimes=25,title=None,missing_rate=False,vitype='err',vimissing=True,backwards=False):
+    cutoff,ntimes=25,title=None,missing_rate=False,vitype='err',vimissing=True,backwards=False,save_models=False):
     vis =  average_varimp(X,y,attributes,ntrees,replace,mtry,max_depth,missing_branch,
         missing_rate=missing_rate,ntimes=ntimes,select=False,mean=False,vitype=vitype,vimissing=vimissing,printvi=False)
 
@@ -71,8 +71,9 @@ def feature_selection_threshold(X,y,attributes,ntrees,replace,mtry,max_depth,mis
    
         clf.fit(np.append(X[0:i,features],X[i+1:,features],axis=0),np.append(y[0:i],y[i+1:]))
         scores.append(1-clf.oob_error_)
-        with open('prognostic_model_' + title+ str(nn) + '.pickle', 'wb') as handle:
-            pickle.dump(clf,handle)
+        if(save_models is True):
+            with open('prognostic_model_' + title+ str(nn) + '.pickle', 'wb') as handle:
+                pickle.dump(clf,handle)
         nn+=1
         stop_indexes.append(stop_index)
 
@@ -85,10 +86,8 @@ def feature_selection_threshold(X,y,attributes,ntrees,replace,mtry,max_depth,mis
     #print('Best 1 s.e. set of features:')
     stdm = sem(scores)
     indexes= np.where(np.array(scores) == scores[((np.abs(np.array([a for a in scores if a != max(scores)])-(max(scores)-stdm))).argmin())])[0]
-    index = np.array([threshold_values[a] for a in indexes]).argmax()
-    print('Indexes: %r' % indexes)
-    print('Threshold values: %r' % threshold_values)
-    print('Index chosen: %r' % index)
+    index = indexes[-1]
+
     #print(scores[index])
     
     #index = indexes[int(len(indexes)/2)]
@@ -366,8 +365,8 @@ for data_path,class_name in data_paths:
     # with open('prognostic_model_'+ class_name[7:] + '_' + data_path[:-4] + '.pickle', 'rb') as handle:
     #     clf = pickle.load(handle)
 
-    ntimes = 25
-    ntrees = 5001
+    ntimes = 2
+    ntrees = 5
     replace = False
     mtry = math.sqrt
     max_depth = None
