@@ -389,13 +389,13 @@ for data_path,class_name in data_paths:
 
     scores = 0
     ivp,ifp,ifn,ivn,svp,sfp,sfn,svn = 0,0,0,0,0,0,0,0 
-    print(1-clf1.oob_error_)
+    #print(1-clf1.oob_error_)
     for i in range(X.shape[0]):
         Xtrain  = np.concatenate([X[0:i],X[i+1:]])
         ytrain = np.concatenate([y[0:i],y[i+1:]])
         #clf1.fit(np.concatenate([X[0:i],X[i+1:]]),np.concatenate([y[0:i],y[i+1:]]))
-        clf1 = feature_selection_threshold(Xtrain,ytrain,attributes,ntrees,replace,mtry,max_depth,missing_branch,balance,
-            cutoff,ntimes=ntimes,title=None,missing_rate=True,vitype=vitype,vimissing=True,backwards=True):
+        clf1 = feature_selection_threshold(Xtrain,ytrain,original_attributes,ntrees,replace,mtry,max_depth,missing_branch,balance,
+           cutoff,ntimes=ntimes,title=None,missing_rate=True,vitype=vitype,vimissing=True,backwards=True)
         
         if(y[i] == 'SUCESSO'):
             if(clf1.predict(X[i]) == 'SUCESSO'):
