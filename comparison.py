@@ -76,16 +76,16 @@ def feature_selection_threshold(X,y,attributes,ntrees,replace,mtry,max_depth,mis
         nn+=1
         stop_indexes.append(stop_index)
 
-    print('Best oob errors:')
-    for old_index in np.where(np.array(scores) == max(scores))[0]:
+    #print('Best oob errors:')
+    #for old_index in np.where(np.array(scores) == max(scores))[0]:
         #print('Features:')
         #print((attributes[ordered_features[0:len(ordered_features)-old_index]]))
-        print(scores[old_index])
+    #    print(scores[old_index])
 
     #print('Best 1 s.e. set of features:')
     stdm = sem(scores)
     indexes= np.where(np.array(scores) == scores[((np.abs(np.array([a for a in scores if a != max(scores)])-(max(scores)-stdm))).argmin())])[0]
-    index = [threshold_values[a] for a in indexes].argmax()
+    index = np.array([threshold_values[a] for a in indexes]).argmax()
     print('Indexes: %r' % indexes)
     print('Threshold values: %r' % threshold_values)
     print('Index chosen: %r' % index)
