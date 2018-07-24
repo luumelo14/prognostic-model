@@ -18,7 +18,7 @@ class RandomForest(object):
     def __init__(self, ntrees=300, mtry=np.sqrt, max_depth=None,
         min_samples_split=0.8, bootstrap=0.8, oob_error = True,replace = True,
         missing_branch=False, balance=False,prob_answer = False, cutoff=0.5,
-        control_class=None, random_state=9):
+        control_class=None, random_state=9,random_subspace = False):
 
         # number of trees
         self.ntrees = ntrees
@@ -50,6 +50,7 @@ class RandomForest(object):
         self.cutoff = cutoff
         # control class
         self.control_class = control_class
+        self.random_subspace = random_subspace
 
     # fits a forest for the data X with classes y
     def fit(self, X, y):
@@ -84,63 +85,37 @@ class RandomForest(object):
                 self.min_class = c
                 min_class_index = len(classes)-1
 
-        #print('Creating trees...')
-        # for each tree
         self.forest = Parallel(n_jobs=-2)(delayed(self.create_trees)(n_samples, n_sub_samples, classes, min_class_index, t, X, y) for t in range(self.ntrees))
-       
-        # if out-of-bag error should be calculated
+
+
         if self.oob_error is True:
             #print('Calculating oob error...')
             # set of all intances that belong to at least one out-of-bag set
             oob_set = set([j for i in self.forest for j in i.oob])
 
-            ypred = {}
-
-            # for each tree 
-            for t in self.forest:
-                # error counting
-                err = 0
-                # for each instance at the tree out-of-bag set
-                #for i in self.oob[t]:
             
-                for i in t.oob:
-                    if i not in ypred:
-                        ypred[i] = {}
-
+            ypred = {i: {a:0 for a in set(self.y)} for i in range(self.X.shape[0])}
+            for i in range(self.X.shape[0]):
+                for t in self.forest:
+                    if(i not in t.oob):
+                        continue
                     # predict the class (or the class distribution) for instance X[i]
-                    tmp = t.predict(X[i].reshape(1,-1),self.prob)[0]
+                    tmp = t.predict(self.X[i].reshape(1,-1),self.prob)[0]
                     # in case of class prediction (not distribution)
                     if(self.prob is False):
-                        # add a vote for class "tmp"
-                        if tmp not in ypred[i]:
-                            ypred[i][tmp] = 1
-                        else:
-                            ypred[i][tmp] += 1
-                        # wrong prediction
-                        if (tmp != y[i]):
-                            err += 1
-
+                        ypred[i][tmp] += 1
                     # in case of class distribution
                     else:
                         for k in tmp.keys():
-                            if k not in ypred[i].keys():
-                                ypred[i][k] = tmp[k]
-                            else:
-                                ypred[i][k] += tmp[k]
+                            ypred[i][k] += tmp[k]
                             
-                            yp = max(ypred[i].keys(), key= (lambda k: ypred[i][k]))
-                            if(yp != y[i]):
-                                err += 1
-                
-            err = 0
-            dif = 0
-            # calculate the out-of-bag error
-            for i in ypred.keys():
+                        yp = max(ypred[i].keys(), key= (lambda k: ypred[k]))
 
-                #in case of a tie, assign the class that appears the most in the training set
-                if(self.cutoff==0.5 and len(ypred[i]) > 1 and 
-                    list(ypred[i].values())[0] == list(ypred[i].values())[1]):
-                    yp = mode(y)[0][0]
+           
+            err = 0
+            for i in ypred.keys():
+                if(self.cutoff==0.5 and list(ypred[i].values())[0] == list(ypred[i].values())[1]):
+                    yp = mode(self.y)[0][0]
                 else:
                     if(self.balance is False or self.cutoff==0.5):
                         yp = max(ypred[i].keys(), key= (lambda k: ypred[i][k]))
@@ -154,64 +129,39 @@ class RandomForest(object):
                 if(yp != y[i]):
                     err += 1
 
-                # if(len(ypred[i].keys()) > 1):
-                #     dif += abs(ypred[i][list(ypred[i].keys())[0]] - ypred[i][list(ypred[i].keys())[1]])/(ypred[i][list(ypred[i].keys())[0]] + ypred[i][list(ypred[i].keys())[1]])
-                # else:
-                #     dif += 1
-
-            #dif = dif / len(ypred.keys())
-            #self.dif = dif
-        
             self.oob_error_ = err / len(set(oob_set))
 
     def create_trees(self, n_samples, n_sub_samples, classes, min_class_index,i,X,y):
 
         np.random.seed(self.random_state+i)
+
         # select same proportion of instances from each class
         if(self.balance is False):
             # select indexes of sub samples considering class balance    
             index_sub_samples = sorted([k for l in [np.random.choice(a, round(n_sub_samples*(len(a)/n_samples)),
                 replace=self.replace) for a in classes] for k in l])
-            # if(self.replace is False):
-            #     index_sub_samples = sorted(np.random.choice(subsets[(i%nsubsets)],round(n_samples*self.bootstrap),replace=False))
-            #     index_oob_samples = np.delete(np.array(subsets[(i%nsubsets)]),index_sub_samples)
-            #     print(index_sub_samples)
-            #     print(index_oob_samples)
-            #     exit()
-            # else:
-            #     index_sub_samples = np.append(sorted(np.random.choice(classes[min_class],round(n_samples/2),replace=True)),
-            #         np.random.choice(classes[(min_class+1)%2],round(n_samples/2),replace=True))
             index_oob_samples = np.delete(np.array(range(n_samples)),index_sub_samples) 
         # Balanced Random Forests
         else:
-            #rus = RandomUnderSampler(ratio='majority',replacement=self.replace,random_state=self.random_state)
-            #X_res,y_res = rus.fit_sample(np.arange(n_samples).reshape(-1,1),[1 if yi == 'INSATISFATORIO' else 0 for yi in y])
-            #index_sub_samples = (X_res.reshape(-1))
-            # if(int(n_sub_samples/2) > len(classes[min_class_index])):
-            #     replace = True
-            # else:
-            #     replace = self.replace
             index_sub_samples = sorted(np.random.choice(classes[min_class_index],len(classes[min_class_index]),replace=True))
             for c in range(len(classes)):
                 if(c != min_class_index):
-                    #if(n_sub_samples-int(n_sub_samples/2) > len(classes[c])):
                     if(n_sub_samples-len(classes[min_class_index]) > len(classes[c])):
                         replace = True
                     else:
                         replace = self.replace
                     index_sub_samples = np.append(index_sub_samples, 
                         sorted(np.random.choice(classes[c],n_sub_samples-len(classes[min_class_index]),replace=replace)))
-            #index_sub_samples = sorted(np.random.choice(range(n_samples),n_sub_samples,replace=self.replace))
             index_oob_samples = np.delete(np.array(range(n_samples)),index_sub_samples)
         
         X_subset = X[index_sub_samples]
         y_subset = y[index_sub_samples]
         tree = dt.DecisionTreeClassifier(max_depth=self.max_depth,mtry=self.mtry,
-            missing_branch=self.missing_branch, random_state=self.random_state+i)
+            missing_branch=self.missing_branch, random_state=self.random_state+i, random_subspace=self.random_subspace)
         tree.oob = index_oob_samples
         #tree.index = i
         tree.fit(X_subset,y_subset)
-        return tree #self.forest.append(tree)
+        return tree 
 
     def predict(self, X,prob=None):
 
@@ -243,7 +193,6 @@ class RandomForest(object):
 
         return predictions
         
-
 
     def score(self, X, y):
 
@@ -385,9 +334,6 @@ class RandomForest(object):
                 else:
                     sa = m
 
-
-                # import pdb
-                # pdb.set_trace()
                 if(vitype == 'auc'):
                     if(len(set(y[t.oob])) > 1):
                         ntreesc += 1

@@ -11,7 +11,7 @@ import random
 class Node(object):
     
     # A node object of a decision tree
-    def __init__(self, feature_index, values,branches,branch_nan,sample_size,distr,is_class=False,final_class=None,config=''):#threshold, branch_true, branch_false):
+    def __init__(self, feature_index, values,branches,branch_nan,sample_size,distr,is_class=False,final_class=None):
         
         # the index of the test feature at the node 
         self.feature_index = feature_index
@@ -29,15 +29,13 @@ class Node(object):
         self.final_class = final_class
         # class distribution at the node
         self.distr = distr
-        self.config = config
-
 
 
 
 class DecisionTreeClassifier(object):
 
     def __init__(self, max_depth=None,
-                    min_samples_split=2,missing_branch = True, mtry=None,random_state=9):
+                    min_samples_split=2,missing_branch = True, mtry=None,random_state=9,random_subspace=False):
 
         # a function that determines how many features will used to build the tree
         self.mtry = mtry
@@ -52,7 +50,7 @@ class DecisionTreeClassifier(object):
         # list of lists of attributes in every tree 
         self.feature_indices = []
 
-        self.config = {}
+        self.random_subspace = random_subspace
 
     # fits a tree for the data X with classes y
     def fit(self, X, y):
@@ -61,15 +59,15 @@ class DecisionTreeClassifier(object):
         n_features = X.shape[1]
 
         # if the mtry is None, then use all the features
-        if(self.mtry is None):
+        
+        if(self.mtry is None or self.random_subspace is False):
             n_sub_features = n_features
+            self.feature_indices = np.arange(n_features)
         else:
             n_sub_features = int(self.mtry(n_features))        
-        
-
-        random.seed(self.random_state)
-        
-        self.feature_indices = random.sample(range(n_features), n_sub_features)
+            random.seed(self.random_state)
+            self.feature_indices = random.sample(range(n_features), n_sub_features)
+              
 
         # builds tree from the root
         self.root = self.build_tree(X,y,self.feature_indices,0,dict([[a,1] for a in range(n_samples)]))
@@ -374,43 +372,33 @@ class DecisionTreeClassifier(object):
             dist[k] = 0 
         for k in weights.keys():
             dist[yc[k]] += weights[k]
-        #if(pdist is not None):
-            # if(len(pdist.keys()) > 1 and len(set(pdist.values()))==1):
-            #     print(self.index)
-            #     print(pdist)
-        #pdist = dist
-        
 
         # if all "whole" instances at the node belong to the same class or if maximum tree depth was reached
         if (utils.entropy(y) == 0  or (len([k for k in dist.keys() if dist[k] < 1]) > 0) 
             or depth == self.max_depth):
-            # if(self.print):
-            #     print('class node - 1st condition')
-            #     print(utils.entropy(y) == 0)
-            #     print(dist)
-            #     print(pdist)
+
             # in case of a tie of the class distributions, final class will be the most frequent
             # class at the parent node
             if(len(dist.keys()) > 1 and len(set(dist.values()))==1 and pdist is not None):
                 #print('tie of class distributions. depth: %r distribution: %r' % (depth,dist))
                 final_class = max(pdist.keys(),key=lambda k: pdist[k])
-                #print(dist)
-                #final_class = mode(yc)[0][0]
+
             # final class will be the most frequent class at the node
             else:
                 final_class = max(dist.keys(),key=lambda k: dist[k])
-                #final_class = mode(yc)[0][0]
+
             # return a decision node
-            # if parent_fiv+'->'+str(final_class) not in self.config.keys():
-            #     self.config[parent_fiv+'->'+str(final_class)] = 1
-            # else:
-            #     self.config[parent_fiv+'->'+str(final_class)] += 1
             return Node(feature_index=None, values=None, branches=None, branch_nan=None,
                 sample_size=sum([k for k in weights.values() if k == 1]), distr=dist, 
                 is_class=True, final_class=final_class)#,config=parent_fiv+'->'+str(final_class))
 
         # get the feature and its split value(s) that maximize the information gain  
-        feature_index, values = self.find_split(X,y, feature_indices, weights)
+        if(self.random_subspace is False):
+
+            nfeature_indices = random.sample(list(feature_indices), int(self.mtry(len(feature_indices))))
+        else:
+            nfeature_indices = feature_indices
+        feature_index, values = self.find_split(X,y, nfeature_indices, weights)
 
         #if the best split could not be found, returns a decision node 
         if(feature_index == -1):
@@ -418,21 +406,14 @@ class DecisionTreeClassifier(object):
             if(len(dist.keys()) > 1 and len(set(dist.values()))==1 and pdist is not None):
                 #print('tie of class distributions. depth: %r distribution: %r' % (depth,dist))
                 final_class = max(pdist.keys(),key=lambda k: pdist[k])
-                #final_class = mode(yc)[0][0]
+
             # final class will be the most frequent class at the node
             else:
                 final_class = max(dist.keys(),key=lambda k: dist[k])
-                #final_class = mode(yc)[0][0]
-            # if(self.print):
-            #     print('class node - could not find best split')
-            #     print(dist)
-            # if parent_fiv+'->'+str(final_class) not in self.config.keys():
-            #     self.config[parent_fiv+'->'+str(final_class)] = 1
-            # else:
-            #     self.config[parent_fiv+'->'+str(final_class)] += 1
+
             return Node(feature_index=None, values=None, branches=None, branch_nan=None,
                 sample_size=sum([k for k in weights.values() if k == 1]), distr=dist,
-                is_class = True, final_class=final_class)#,config=parent_fiv+'->'+str(final_class))
+                is_class = True, final_class=final_class)
 
         # get rows where the values of X for the feature are not missing
         not_nan_rows = [a for a in range(X.shape[0]) if (not utils.isnan(X[:,feature_index][a]))]
@@ -455,26 +436,15 @@ class DecisionTreeClassifier(object):
             if(len(dist.keys()) > 1 and len(set(dist.values()))==1 and pdist is not None):
                 #print('tie of class distributions. depth: %r distribution: %r' % (depth,dist))
                 final_class = max(pdist.keys(),key=lambda k: pdist[k])
-                #final_class = mode(yc)[0][0]
+
             # final class will be the most frequent class at the node
             else:
                 final_class = max(dist.keys(),key=lambda k: dist[k])
-                #final_class = mode(yc)[0][0]
 
             # if(self.print):
-            #     print('class node - split led to len(ys) < 2')
-            #     print(dist)
-            #     print(Xnotnan)
-            #     print(feature_index)
-            #     print(final_class)
-            #     print(pdist)
-            # if parent_fiv+'->'+str(final_class) not in self.config.keys():
-            #     self.config[parent_fiv+'->'+str(final_class)] = 1
-            # else:
-            #     self.config[parent_fiv+'->'+str(final_class)] += 1
             return Node(feature_index=None, values=None, branches=None, branch_nan=None,
                 sample_size=sum([k for k in weights.values() if k == 1]), distr=dist,
-                is_class=True, final_class=final_class)#,config=parent_fiv+'->'+str(final_class))
+                is_class=True, final_class=final_class)
 
 
         branch_nan = None    
@@ -504,14 +474,7 @@ class DecisionTreeClassifier(object):
                     for j in nan_rows:
                         (dweights[i])[rows_to_consider[j]] = weights[rows_to_consider[j]] * prob_values_i
 
-                # add a branch with the the split set 
-                # if(len(values) == 1):
-                #     if(i == 0):
-                #         v = '<='+str(values[0])
-                #     else:
-                #         v ='>'+str(values[0])
-                # else:
-                #     v = str(values[i])
+
                 branches.append(self.build_tree(Xc,yc,feature_indices,depth+1,dweights[i],dist))#,parent_fiv=str(feature_index)+'->'+v))
 
         # nan branch approach
@@ -528,19 +491,11 @@ class DecisionTreeClassifier(object):
                 if(len(dist.keys()) > 1 and len(set(dist.values()))==1 and pdist is not None):
                     #print('tie of class distributions. depth: %r distribution: %r' % (depth,dist))
                     final_class = max(pdist.keys(),key=lambda k: pdist[k])
-                    #final_class = mode(yc)[0][0]
                 # final class will be the most frequent class at the node
                 else:
                     final_class = max(dist.keys(),key=lambda k: dist[k])
-                    #final_class = mode(yc)[0][0]
-                # if(self.print):
-                #     print('class node - no samples belong here')
-                #     print(dist)
+
                 # assign to the nan branch a decision node
-                # if parent_fiv+'->'+str(final_class) not in self.config.keys():
-                #     self.config[parent_fiv+'->'+str(final_class)] = 1
-                # else:
-                #     self.config[parent_fiv+'->'+str(final_class)] += 1
                 branch_nan =  Node(feature_index=None, values=None, branches=None, branch_nan=None,
                     sample_size=0, distr={k:0 for k in set(y)}, is_class=True, final_class=final_class)#,config=parent_fiv+'->'+str(final_class))
 
@@ -565,32 +520,18 @@ class DecisionTreeClassifier(object):
             if(len(dist.keys()) > 1 and len(set(dist.values()))==1 and pdist is not None):
                 #print('tie of class distributions. depth: %r distribution: %r' % (depth,dist))
                 final_class = max(pdist.keys(),key=lambda k: pdist[k])
-                #final_class = mode(yc)[0][0]
-            # final class will be the most frequent class at the node
+
             else:
                 final_class = max(dist.keys(),key=lambda k: dist[k])
-                #final_class = mode(yc)[0][0]
-            #for c in branches:
-            #   print(c.final_class)
-            #print(branch_nan.final_class)
-            # if parent_fiv+'->'+str(final_class) not in self.config.keys():
-            #     self.config[parent_fiv+'->'+str(final_class)] = 1
-            # else:
-            #     self.config[parent_fiv+'->'+str(final_class)] += 1
+
             return Node(feature_index=None, values=None, branches=None, branch_nan=None,
                 sample_size=sum([k for k in weights.values() if k == 1]), distr=dist,
                 is_class=True, final_class=final_class)#,config=parent_fiv+'->'+str(final_class))
-        #print('test node - feature: %r' % self.original_attributes[feature_index])
-        #print(dist)
-        #print(pdist)
+
 
         # # returns a test node with its feature index and values and its branches.
-        # if parent_fiv+'->'+str(feature_index) not in self.config.keys():
-        #     self.config[parent_fiv+'->'+str(feature_index)] = 1
-        # else:
-        #     self.config[parent_fiv+'->'+str(feature_index)] += 1
         return Node(feature_index=feature_index, values=values, branches=branches, branch_nan=branch_nan,
-            sample_size=sum([k for k in weights.values() if k == 1]), distr=dist)#,config=parent_fiv+'->'+str(feature_index))
+            sample_size=sum([k for k in weights.values() if k == 1]), distr=dist)
 
 
     # returns the feature index from the feature_indices list that 
