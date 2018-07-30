@@ -287,7 +287,7 @@ for data_path,class_name in data_paths:
     # with open('prognostic_model_'+ class_name[7:] + '_' + data_path[:-4] + '.pickle', 'rb') as handle:
     #     clf = pickle.load(handle)
 
-    ntimes = 25
+    ntimes = 50
     ntrees = 5001
     replace = False
     mtry = math.sqrt
@@ -297,13 +297,28 @@ for data_path,class_name in data_paths:
     cutoff=0.5
     balance =False
     vitype = 'auc'
-
+    # plot.plot_randomforest_accuracy(X,y,original_attributes,ntrees,replace,mtry,max_depth,missing_branch,ntimes,title='oi')
+    # exit()
+    
     print('--------------- MODEL: %r DATA PATH: %r' % (class_name, data_path))
     clf1 = rf.RandomForest(ntrees=ntrees,oob_error=True,random_state=seed,
-        mtry=mtry,missing_branch=missing_branch,prob_answer=False,max_depth=max_depth,replace=replace,balance=True)
-    clf1.fit(X,y)
-    print(clf1.oob_error_)
-    exit()
+        mtry=mtry,missing_branch=missing_branch,prob_answer=False,max_depth=max_depth,replace=replace,balance=True,random_subspace=True)
+    
+    clf1.attributes = np.array(['Q44071_opcLcSensor[C6]', 'Q44071_opcLcSensor[C7]', 'Q44071_opcLcSensor[C8]',
+     'Q44071_opcLcSensTatil[C6]', 'Q44071_opcLcSensTatil[C7]', 'Q44071_opcLcSensTatil[C8]', 'Q44071_opcLcSensTatil[T1]',
+     'Q44071_snDorPos','Q61802_opctransferencias[SQ003]','Q44071_formTempoAval','Q44071_opcForca[AdDedos]',
+     'Q44071_opcForca[FlexDedos]','Q44071_snFxPr','Q44071_snFxAt']) 
+    #clf2.attributes = np.array(['Q44071_lisTpTrauma[moto]','Q44071_lisTpAuxilio[Tipoia]','Q44071_lisTpAuxilio[Suporte]'])
+    #clf2.attributes = np.array(['Q61802_opctransferencias[SQ003]', 'Q44071_opcForca[FlexCotovelo]','Q44071_snDesacordado','Q44071_lisTpAuxilio[Tipoia]','Q44071_lisTpAuxilio[Suporte]'])
+    #clf2.attributes = np.array(['Q61802_opcLdCirurgia','Q44071_snCplexoAt', 'Q61802_opctransferencias[SQ003]', 'Q44071_opcForca[AbdOmbro]','Q44071_lisTpTrauma[moto]','Q44071_lisTpAuxilio[Tipoia]','Q44071_lisTpAuxilio[Suporte]'])
+
+    attributes_indexes = [np.where(a == original_attributes)[0][0] for a in clf1.attributes]
+    X = X[:,attributes_indexes]
+
+    #clf1.fit(X,y)
+    #print(clf1.oob_error_)
+    #print(time.time()-tm)
+    #exit()
     # if('Ombro' in data_path):
     #     vitype = 'auc'
     # else:
@@ -319,9 +334,9 @@ for data_path,class_name in data_paths:
     for i in range(X.shape[0]):
         Xtrain  = np.concatenate([X[0:i],X[i+1:]])
         ytrain = np.concatenate([y[0:i],y[i+1:]])
-        #clf1.fit(np.concatenate([X[0:i],X[i+1:]]),np.concatenate([y[0:i],y[i+1:]]))
-        clf1 = feature_selection_threshold(Xtrain,ytrain,original_attributes,ntrees,replace,mtry,max_depth,missing_branch,balance,
-           cutoff,ntimes=ntimes,title=class_name,missing_rate=True,vitype=vitype,vimissing=True,backwards=True)
+        clf1.fit(Xtrain,ytrain)
+        # clf1 = feature_selection_threshold(Xtrain,ytrain,original_attributes,ntrees,replace,mtry,max_depth,missing_branch,balance,
+        #    cutoff,ntimes=ntimes,title=class_name,missing_rate=True,vitype=vitype,vimissing=True,backwards=True)
         
         if(y[i] == 'SUCESSO'):
             if(clf1.predict(X[i]) == 'SUCESSO'):

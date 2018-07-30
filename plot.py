@@ -4,7 +4,7 @@ import pandas as pd
 import numpy as np
 from collections import Counter
 import matplotlib 
-matplotlib.use('agg')
+#matplotlib.use('agg')
 import matplotlib.pyplot as plt
 import math
 import utils
@@ -487,6 +487,7 @@ def plot_randomforest_accuracy(X,y,attributes,ntrees,replace,mtry,max_depth,miss
  
 
     k = sorted(missing_branch_dict.items(),key=lambda x: x[0])
+
     plt.bar(range(len([i[0] for i in k])),[i[1] for i in k])
     pos = np.arange(len(k))
     width = 1.0     # gives histogram aspect to the bar diagram
@@ -502,6 +503,7 @@ def plot_randomforest_accuracy(X,y,attributes,ntrees,replace,mtry,max_depth,miss
     plt.ylabel('frequência')
 
     plt.show()
+
 
 def plot_randomforest_seed(X,y,attributes):
     missing_branch = []

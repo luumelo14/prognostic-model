@@ -466,7 +466,7 @@ class DecisionTreeClassifier(object):
             if len(ys[i]) != 0:
                 # C.45 approach 
                 if(self.missing_branch is False):
-                    # calculate probability of outcoment values[i], estimated as the sum of the weights
+                    # calculate probability of outcome values[i], estimated as the sum of the weights
                     # of instances in the node known to have outcome values[i] divided by the sum of the
                     # weights of the cases in the node with known outcomes
                     prob_values_i = round(float(sum(dweights[i].values()) / s),5)
