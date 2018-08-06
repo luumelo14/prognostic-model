@@ -117,10 +117,7 @@ def average_varimp(X,y,attributes,ntrees,replace,mtry,max_depth,missing_branch,v
             seed = np.random.randint(0,10000)
             clf = rf.RandomForest(ntrees=ntrees,oob_error=True,random_state=seed,mtry=mtry,
                 missing_branch=missing_branch,prob_answer=False,max_depth=max_depth,replace=replace,balance=True)
-            #print(np.append(X[0:i,:],X[i+1:,:],axis=0).shape)
-            #print(len(np.append(y[0:i],y[i+1:])))
-            clf.fit(np.append(X[0:i,:],X[i+1:,:],axis=0),np.append(y[0:i],y[i+1:]))
-            #clf.fit(X,y)
+            clf.fit(X,y)
             varimps = clf.variable_importance(vitype=vimissing,vimissing=True)
 
             for var in varimps.keys():
@@ -274,6 +271,7 @@ use_feature_selection = False
 
 
 seed = 1994
+
 for data_path,class_name in data_paths:
     data, original_attributes, categories  = read.readData(data_path = data_path, class_name = class_name, 
         class_questionnaire = class_questionnaire, missing_input = missing_input, dummy = dummy,
@@ -302,12 +300,12 @@ for data_path,class_name in data_paths:
     
     print('--------------- MODEL: %r DATA PATH: %r' % (class_name, data_path))
     clf1 = rf.RandomForest(ntrees=ntrees,oob_error=True,random_state=seed,
-        mtry=mtry,missing_branch=missing_branch,prob_answer=False,max_depth=max_depth,replace=replace,balance=True,random_subspace=True)
+        mtry=mtry,missing_branch=missing_branch,prob_answer=False,max_depth=max_depth,replace=replace,balance=False,random_subspace=True)
     
-    clf1.attributes = np.array(['Q44071_opcLcSensor[C6]', 'Q44071_opcLcSensor[C7]', 'Q44071_opcLcSensor[C8]',
-     'Q44071_opcLcSensTatil[C6]', 'Q44071_opcLcSensTatil[C7]', 'Q44071_opcLcSensTatil[C8]', 'Q44071_opcLcSensTatil[T1]',
-     'Q44071_snDorPos','Q61802_opctransferencias[SQ003]','Q44071_formTempoAval','Q44071_opcForca[AdDedos]',
-     'Q44071_opcForca[FlexDedos]','Q44071_snFxPr','Q44071_snFxAt']) 
+    clf1.attributes = np.array(['Q44071_snDorPos', 'Q44071_opcLcSensTatil[C7]', 'Q61802_opctransferencias[SQ003]',
+         'Q44071_opcLcSensor[C7]', 'Q44071_opcLcSensTatil[C8]', 'Q44071_formTempoAval',  'Q44071_opcLcSensTatil[C6]',
+         'Q44071_opcForca[FlexDedos]', 'Q44071_opcLcSensor[C8]','Q44071_snFxPr',
+         'Q44071_opcLcSensTatil[T1]','Q44071_opcForca[AdDedos]','Q44071_snFxAt']) 
     #clf2.attributes = np.array(['Q44071_lisTpTrauma[moto]','Q44071_lisTpAuxilio[Tipoia]','Q44071_lisTpAuxilio[Suporte]'])
     #clf2.attributes = np.array(['Q61802_opctransferencias[SQ003]', 'Q44071_opcForca[FlexCotovelo]','Q44071_snDesacordado','Q44071_lisTpAuxilio[Tipoia]','Q44071_lisTpAuxilio[Suporte]'])
     #clf2.attributes = np.array(['Q61802_opcLdCirurgia','Q44071_snCplexoAt', 'Q61802_opctransferencias[SQ003]', 'Q44071_opcForca[AbdOmbro]','Q44071_lisTpTrauma[moto]','Q44071_lisTpAuxilio[Tipoia]','Q44071_lisTpAuxilio[Suporte]'])
@@ -329,6 +327,7 @@ for data_path,class_name in data_paths:
     #     pickle.dump(clf,handle)
 
     scores = 0
+    s = []
     ivp,ifp,ifn,ivn,svp,sfp,sfn,svn = 0,0,0,0,0,0,0,0 
     #print(1-clf1.oob_error_)
     for i in range(X.shape[0]):
@@ -353,6 +352,8 @@ for data_path,class_name in data_paths:
                 svn+=1
                 ivp+=1
         scores += clf1.score(X[i],y[i]) 
+        s.append(clf1.score(X[i],y[i]))
+    print('desvio: %r' % np.std(s))
     print(scores/X.shape[0])
     p = svp/(svp+sfp)
     c = svp/(svp+sfn)
@@ -369,7 +370,7 @@ for data_path,class_name in data_paths:
         f = (2*p*c)/(p+c)
     print('INSATISFATÓRIO --- cobertura: %r precisão: %r medida-F: %r ' % (c,p,f))
 
-
+    exit()
 
   
 
