@@ -102,7 +102,7 @@ class RandomForest(object):
             oob_set = set([j for i in self.forest for j in i.oob])
 
             
-            ypred = {i: {a:0 for a in set(self.y)} for i in range(self.X.shape[0])}
+            ypred = {i: {a:0 for a in set(yfit)} for i in range(self.X.shape[0])}
             for i in range(self.X.shape[0]):
                 for t in self.forest:
                     if(i not in t.oob):
@@ -123,7 +123,7 @@ class RandomForest(object):
             err = 0
             for i in ypred.keys():
                 if(self.cutoff==0.5 and list(ypred[i].values())[0] == list(ypred[i].values())[1]):
-                    yp = mode(self.y)[0][0]
+                    yp = mode(yfit)[0][0]
                 else:
                     if(self.balance is False or self.cutoff==0.5):
                         yp = max(ypred[i].keys(), key= (lambda k: ypred[i][k]))
@@ -134,7 +134,7 @@ class RandomForest(object):
                             yp = k
                         else:
                             yp = max(ypred[i].keys(), key= (lambda k: ypred[i][k]))
-                if(yp != y[i]):
+                if(yp != yfit[i]):
                     err += 1
 
             self.oob_error_ = err / len(set(oob_set))
@@ -181,6 +181,7 @@ class RandomForest(object):
                 for f in range(len(self.X.columns)):
                     if(self.X.columns[f] not in X.columns):
                         X.insert(f,self.X.columns[f],np.nan)
+                X = X.values
             X = [X]
             n_samples = 1
         else:
@@ -190,8 +191,7 @@ class RandomForest(object):
                 for f in range(len(self.X.columns)):
                     if(self.X.columns[f] not in X.columns):
                         X.insert(f,self.X.columns[f],[np.nan]*X.shape[0])
-        X = X.values
-
+                X = X.values
 
         n_trees = len(self.forest)
         predictions = np.empty(n_samples,dtype=object)
@@ -222,7 +222,7 @@ class RandomForest(object):
         if(isinstance(y,str)):
             y = [y]
             n_samples = 1
-
+        
         correct = 0
         for i in range(n_samples):
             if y_predict[i] == y[i]:
