@@ -38,7 +38,9 @@ class DecisionTreeClassifier(object):
                     min_samples_split=2,missing_branch = True, mtry=None,random_state=9,random_subspace=False):
 
         # a function that determines how many features will used to build the tree
+        
         self.mtry = mtry
+
         # defines the depth to which the tree should be grown  
         self.max_depth = max_depth
         # if missing_branch = False, then missing values will be handled according to the C4.5 algorithm approach.
@@ -394,8 +396,7 @@ class DecisionTreeClassifier(object):
                 is_class=True, final_class=final_class)#,config=parent_fiv+'->'+str(final_class))
 
         # get the feature and its split value(s) that maximize the information gain  
-        if(self.random_subspace is False):
-
+        if(self.random_subspace is False and self.mtry is not None):
             nfeature_indices = random.sample(list(feature_indices), int(self.mtry(len(feature_indices))))
         else:
             nfeature_indices = feature_indices

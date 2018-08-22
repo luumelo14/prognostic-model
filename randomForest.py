@@ -239,7 +239,10 @@ class RandomForest(object):
         print('calculating feature contribution')
         C = set(self.y)
         if(X == None):
-            X = self.X.values
+            if(isinstance(self.X,pd.DataFrame)):
+                X = self.X.values
+            else:
+                X = self.X
         else:
             if(isinstance(X, pd.DataFrame) and X.shape[1] != self.X.shape[1]):
                 X = X[X.columns[[np.where(a == X.columns)[0][0] for a in self.X.columns if a in X.columns]]]
