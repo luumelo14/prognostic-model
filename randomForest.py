@@ -58,6 +58,7 @@ class RandomForest(object):
         self.forest = []
         self.X = X
         self.y = y
+        
         n_samples = len(y)
 
 
@@ -84,8 +85,15 @@ class RandomForest(object):
                 min_len = len(classes[-1])
                 self.min_class = c
                 min_class_index = len(classes)-1
+        if(isinstance(self.X,pd.DataFrame)):
+            Xfit = X.values
+            yfit = y.values
+        else:
+            Xfit = self.X 
+            yfit = self.y
 
-        self.forest = Parallel(n_jobs=-2)(delayed(self.create_trees)(n_samples, n_sub_samples, classes, min_class_index, t, X, y) for t in range(self.ntrees))
+
+        self.forest = Parallel(n_jobs=-2)(delayed(self.create_trees)(n_samples, n_sub_samples, classes, min_class_index, t, Xfit, yfit) for t in range(self.ntrees))
 
 
         if self.oob_error is True:
@@ -100,7 +108,7 @@ class RandomForest(object):
                     if(i not in t.oob):
                         continue
                     # predict the class (or the class distribution) for instance X[i]
-                    tmp = t.predict(self.X[i].reshape(1,-1),self.prob)[0]
+                    tmp = t.predict(Xfit[i].reshape(1,-1),self.prob)[0]
                     # in case of class prediction (not distribution)
                     if(self.prob is False):
                         ypred[i][tmp] += 1
@@ -167,11 +175,23 @@ class RandomForest(object):
 
         if(prob is None):
             prob = self.prob
-        if(len(np.array(X).shape)) == 1: 
+        if(len(np.array(X).shape) == 1): 
+            if(isinstance(X,pd.DataFrame) and len(X) != self.X.shape[1]):
+                X = X[X.columns[[np.where(a == X.columns)[0][0] for a in self.X.columns if a in X.columns]]]
+                for f in range(len(self.X.columns)):
+                    if(self.X.columns[f] not in X.columns):
+                        X.insert(f,self.X.columns[f],np.nan)
             X = [X]
             n_samples = 1
         else:
             n_samples = np.array(X).shape[0]
+            if(isinstance(X, pd.DataFrame) and X.shape[1] != self.X.shape[1]):
+                X = X[X.columns[[np.where(a == X.columns)[0][0] for a in self.X.columns if a in X.columns]]]
+                for f in range(len(self.X.columns)):
+                    if(self.X.columns[f] not in X.columns):
+                        X.insert(f,self.X.columns[f],[np.nan]*X.shape[0])
+        X = X.values
+
 
         n_trees = len(self.forest)
         predictions = np.empty(n_samples,dtype=object)
@@ -195,14 +215,14 @@ class RandomForest(object):
         
 
     def score(self, X, y):
-
+        
         y_predict = self.predict(X)
      
         n_samples = len(y)
         if(isinstance(y,str)):
             y = [y]
             n_samples = 1
-    
+
         correct = 0
         for i in range(n_samples):
             if y_predict[i] == y[i]:
@@ -219,7 +239,15 @@ class RandomForest(object):
         print('calculating feature contribution')
         C = set(self.y)
         if(X == None):
-            X = self.X
+            X = self.X.values
+        else:
+            if(isinstance(X, pd.DataFrame) and X.shape[1] != self.X.shape[1]):
+                X = X[X.columns[[np.where(a == X.columns)[0][0] for a in self.X.columns if a in X.columns]]]
+                for f in range(len(self.X.columns)):
+                    if(self.X.columns[f] not in X.columns):
+                        X.insert(f,self.X.columns[f],[np.nan]*X.shape[0])
+                X = X.values
+
 
         fcs = []
 
@@ -327,7 +355,7 @@ class RandomForest(object):
             for m in t.feature_indices:
 
 
-                X_permuted = self.X.copy() 
+                X_permuted = self.X.copy().values 
                 if(vimissing is False):
                     np.random.shuffle(X_permuted[:,m])
                     sa = None
@@ -337,12 +365,12 @@ class RandomForest(object):
                 if(vitype == 'auc'):
                     if(len(set(y[t.oob])) > 1):
                         ntreesc += 1
-                        auc_before = t.auc(self.X[t.oob],y[t.oob],shuffle_attribute=None,control_class=self.control_class)
-                        auc = t.auc(X_permuted[t.oob],y[t.oob],shuffle_attribute=sa,control_class=self.control_class)
+                        auc_before = t.auc(self.X.values[t.oob],y.values[t.oob],shuffle_attribute=None,control_class=self.control_class)
+                        auc = t.auc(X_permuted[t.oob],y.values[t.oob],shuffle_attribute=sa,control_class=self.control_class)
                         variable_importance[m] += auc_before - auc
 
                 else:    
-                    err = 1-t.score(self.X[t.oob],y[t.oob],shuffle_attribute=None)
+                    err = 1-t.score(self.X.values[t.oob],y[t.oob],shuffle_attribute=None)
                     err_permuted = 1 - t.score(X_permuted[t.oob], y[t.oob],shuffle_attribute=sa)
                     variable_importance[m] += (err_permuted - err)
 

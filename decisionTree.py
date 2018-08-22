@@ -54,7 +54,8 @@ class DecisionTreeClassifier(object):
 
     # fits a tree for the data X with classes y
     def fit(self, X, y):
-   
+        if(isinstance(X,pd.DataFrame)):
+            X = X.values
         n_samples = X.shape[0]
         n_features = X.shape[1]
 

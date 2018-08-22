@@ -273,7 +273,6 @@ def plot_feature_contributions_surgery_class(X,y,feature_index,fcs,attributes,cl
         omarker = mlines.Line2D([], [], color='black', marker='o', markersize=10,label='Bla', linestyle='None',
             markerfacecolor='None',markeredgecolor='black')
         #plt.legend(handles=[red_patch,blue_patch])
-
         plt.legend([red_patch,blue_patch,xmarker,omarker],['Classe da instância ≠ '+ coi,
             'Classe da instância = '+coi,'Não passou por cirurgia','Passou por cirurgia'],numpoints=1,fontsize='small')
         plt.show()
@@ -281,7 +280,88 @@ def plot_feature_contributions_surgery_class(X,y,feature_index,fcs,attributes,cl
     if(title is not None):        
         plt.savefig(title)
         plt.close()    
+        f = open(title,'w')
+        f.write('X='+str(X))
+        f.write('\ny='+str(y))
+        f.write('\nfcs='+str(fcs))
+        f.write('\nfeatures='+str(attributes))
+        f.write('\nfeature_index='+str(feature_index))
+        f.write('\nvalues='+str(values))
+        f.write('\nx_surgery='+str(x_surgery))
+        f.write('\ny_surgery='+str(y_surgery))
+        f.write('\nsurgery_colors='+str(surgery_colors))
+        f.write('\nx_no_surgery='+str(x_no_surgery))
+        f.write('\ny_no_surgery='+str(y_no_surgery))
+        f.write('\nno_surgery_colors='+str(no_surgery_colors))
+        f.write('\nx_nan='+str(x_nan))
+        f.write('\ny_nan='+str(y_nan))
+        f.write('\nnan_colors='+str(nan_colors))
 
+def plot_feature_contributions_instance(i,fcs,attributes,class_of_interest,title=None):
+    attribute_names = {'Q44071_snDorPos':'Sente dor após a lesão?',
+    'Q44071_opcLcSensor[C6]': 'Sensibilidade superficial \ndolorosa [C6]',
+    'Q44071_opcLcSensor[C7]': 'Sensibilidade superficial \ndolorosa [C7]',
+    'Q44071_opcLcSensor[C8]': 'Sensibilidade superficial \ndolorosa [C8]',
+    'Q44071_opcLcSensTatil[C6]': 'Sensibilidade superficial \ntátil [C6]',
+    'Q44071_opcLcSensTatil[C7]': 'Sensibilidade superficial \ntátil [C7]',
+    'Q44071_opcLcSensTatil[C8]': 'Sensibilidade superficial \ntátil [C8]',
+    'Q44071_opcLcSensTatil[T1]': 'Sensibilidade superficial \ntátil [T1]',
+    'Q44071_opcForca[FlexDedos]': 'Força muscular \n[Flexão dos Dedos]',
+    'Q44071_opcForca[FlexCotovelo]': 'Força muscular \n[Flexão do Cotovelo]',
+    'Q44071_opcForca[AbdOmbro]': 'Força muscular \n[Abdução do Ombro]',
+    'Q44071_opcForca[AdDedos]': 'Força muscular \n[Adução dos Dedos]',
+    'Q44071_snFxPr':'Tem história prévia \nde fratura?', 
+    'Q44071_snFxAt':'Teve fratura associada \nà lesão?', 
+    'Q61802_opctransferencias[SQ003]': 'Transferência realizada \n[Oberlin]',
+    'Q44071_lisMedicAtNer': 'Faz uso de medicamento com ação \nsobre o sistema nervoso?',
+    'Q44071_lisTpTrauma[moto]': 'Evento que levou ao \ntrauma [moto]',
+    'Q44071_lisTpAuxilio[Tipoia]': 'Se faz uso de dispositivo \nauxiliar [Tipoia]',
+    'Q44071_lisTpAuxilio[Suporte]': 'Se faz uso de dispositivo \nauxiliar [Suporte de Ombro]',
+    'Q44071_formTempoAval': 'Período entre a lesão \ne a primeira consulta \nno INDC',
+    'Q44071_snDesacordado': 'Ficou desacordado?',
+    'Q44071_snCplexoAt': 'Já fez alguma cirurgia \ndo plexo braquial?',
+    'Q61802_opcLdCirurgia': 'Qual o lado operado?'}
+    values = []
+    pos_fcs = []
+    y_fcs = []
+    colors = []
+    for feature_index in range(len(attributes)):
+        values.append(str(attribute_names[attributes[feature_index]]) +' : ' + str(i[feature_index]))
+        if(feature_index in fcs.keys()):
+            pos_fcs.append(fcs[feature_index][class_of_interest])
+            y_fcs.append(feature_index)
+            if(fcs[feature_index][class_of_interest] > 0):
+                colors.append('blue')
+            elif(fcs[feature_index][class_of_interest] < 0):
+                colors.append('red')
+            else:
+                colors.append('black')
+
+    print(pos_fcs)
+    print(y_fcs)
+    ax = plt.subplot(111)    
+    plt.plot(y_fcs,pos_fcs,'x')#,colors=colors)
+    #plt.plot(neg_fcs,neg_values,'x',color='red')
+    #plt.plot(zero_fcs,zero_values,'x',color='black')
+    plt.ylabel('contribuição')
+    plt.xlabel('atributos')
+
+    ax.set_xticks(np.array(range(len(values)+2))-1)
+    ax.set_xticklabels([str('')]+values+[str('')],rotation=90)
+
+    plt.plot(np.arange(len(y_fcs)+2)-1,np.array([0 for i in (np.arange(len(y_fcs)+2)-1)]),'r--',color='black')
+    plt.tight_layout()
+    plt.show()
+
+    
+    if(title is not None):        
+        #plt.savefig(title)
+        #plt.close()        
+        f = open(title,'w')
+        #f.write('fcs='+str(fcs))
+        f.write('X='+str(i))
+        f.write('\nfeatures_values='+str(values))
+        f.write('\ncontributions='+str(pos_fcs))
 def plot_feature_contributions(X,feature_index,fcs,attributes,class_of_interest,title=None):
     
     if(not utils.isint(X[utils.firstNotNan(X[:,feature_index])][feature_index]) and not utils.isfloat(X[utils.firstNotNan(X[:,feature_index])][feature_index])):

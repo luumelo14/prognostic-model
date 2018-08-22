@@ -55,9 +55,9 @@ def readData(class_name,class_questionnaire='Q92510',data_path=None,missing_inpu
 	# data = (data.drop(data.columns[data.columns.str.endswith('participant_code')],1))
 	# data = (data.drop(data.columns[data.columns.str.endswith('Natural de')],1))
 
-	data = ((((data.T).drop_duplicates(keep='first')).dropna(how='all')).T)
+	#data = ((((data.T).drop_duplicates(keep='first')).dropna(how='all')).T)
 	#dropping columns that are constant
-	data = data.loc[:,data.apply(pd.Series.nunique) != 1]
+	#data = data.loc[:,data.apply(pd.Series.nunique) != 1]
 
 	## data = pp.preprocess(data_path,class_name)
 	n_samples = data.shape[0]
@@ -78,7 +78,7 @@ def readData(class_name,class_questionnaire='Q92510',data_path=None,missing_inpu
 
 	for attribute in data.columns:
 
-		if skip_class_questionnaire and class_questionnaire in attribute and class_name not in attribute:
+		if skip_class_questionnaire and class_questionnaire is not None and class_questionnaire in attribute and class_name not in attribute:
 			index +=1
 			continue
 		# else:
@@ -86,16 +86,19 @@ def readData(class_name,class_questionnaire='Q92510',data_path=None,missing_inpu
 		# 		index+=1
 		# 		continue
 
+
 		t = pd.factorize(data[attribute].values,sort=True)
+		
 		#temp = t[0]
+
 		i = utils.firstNotNan(data[attribute].values)
 		
 		try:
 			result = regex_date.match(data[attribute].values[i])
 			if(result):
 				treatment[index] = 'date'
-
-			elif(len(t[1]) > 0.9*n_samples):
+			
+			elif(len(t[1]) > 0.9*n_samples and len(t[1][0]) > 50):
 				# if(attribute == 'participant_code'):
 				# 	temp = t[0]
 				# 	treatment[index] = 'int'
@@ -139,15 +142,14 @@ def readData(class_name,class_questionnaire='Q92510',data_path=None,missing_inpu
 			else:
 				print("could not identify type of attribute %s" % attribute)
 				exit(-1)
-
+	
 
 
 		#treatment of class	attribute	
 		if(class_name in attribute):
 			temp = t[0]
 			treatment[index] = 'int'
-		
-	
+
 		
 		if(treatment[index] == 'float'):
 			if(missing_input != 'none'):
@@ -202,6 +204,7 @@ def readData(class_name,class_questionnaire='Q92510',data_path=None,missing_inpu
 				#print(np.array(temp).reshape(-1,1).shape)
 				transformedData.append(np.array(temp).reshape(-1,1))
 				
+
 				
 			elif(treatment[index] == 'date'):
 				temp = []
@@ -254,7 +257,7 @@ def readData(class_name,class_questionnaire='Q92510',data_path=None,missing_inpu
 		index += 1
 
 	data = np.array(transformedData).reshape(-1,n_samples).T
-
+	data = pd.DataFrame(data,columns=attributes)
 
 	# pd.DataFrame(data,columns=attributes).to_csv('out.csv', index=False)
 	# f = open('DorR.csv', 'w')
@@ -266,6 +269,6 @@ def readData(class_name,class_questionnaire='Q92510',data_path=None,missing_inpu
 	# 	f.write(','.join(str(dd) for dd in d))
 	# exit()
 
-	return data, np.array(attributes, dtype=object), np.array(categories)
+	return data
 	###
 
