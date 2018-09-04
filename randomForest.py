@@ -57,9 +57,13 @@ class RandomForest(object):
 
         self.forest = []
         self.X = X
-        self.y = y
-        
-        n_samples = len(y)
+        if(isinstance(y,pd.Series)):
+            self.y = y.values
+        else:
+            self.y = y
+
+
+        n_samples = len(self.y)
 
 
         if(self.replace is True):
@@ -74,20 +78,22 @@ class RandomForest(object):
         index_oob_samples = np.array([])
 
         classes = []
-        min_len = len(y)
-        self.min_class = list(set(y))[0]
+        min_len = len(self.y)
+        self.min_class = list(set(self.y))[0]
         min_class_index = 0
     # separate samples according to their classes
-        for c in set(y):
-            classes.append([j for j in range(len(y)) if y[j] == c])
+        for c in set(self.y):
+           
+
+            classes.append([j for j in range(len(y)) if self.y[j] == c])
 
             if(len(classes[-1]) < min_len):
                 min_len = len(classes[-1])
                 self.min_class = c
                 min_class_index = len(classes)-1
         if(isinstance(self.X,pd.DataFrame)):
-            Xfit = X.values
-            yfit = y.values
+            Xfit = self.X.values
+            yfit = self.y
         else:
             Xfit = self.X 
             yfit = self.y

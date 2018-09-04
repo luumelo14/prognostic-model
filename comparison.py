@@ -76,8 +76,10 @@ def feature_selection_threshold(X,y,ntrees,replace,mtry,max_depth,missing_branch
             cutoff=cutoff)
 
    
-        clf.fit(X.values[:,features],y,X.columns[features])
+        clf.fit(X[features],y)
+        clf.threshold = threshold
         scores.append(1-clf.oob_error_)
+
         if(save_models is True):
             with open('prognostic_model_' + title+ str(nn) + '.pickle', 'wb') as handle:
                 pickle.dump(clf,handle)
@@ -104,6 +106,7 @@ def feature_selection_threshold(X,y,ntrees,replace,mtry,max_depth,missing_branch
 
     #plot.boxplot(importance_values,features,title)
     if(save_models is True):
+
         plot.plot_feature_importance_vs_accuracy(threshold_values,scores,xlabel='threshold',title=title,special=index)
     
     return clf
@@ -123,7 +126,7 @@ def average_varimp(X,y,ntrees,replace,mtry,max_depth,missing_branch,vitype='err'
 
             for var in varimps.keys():
                 if(missing_rate):
-                    vi[var].append(varimps[var] * utils.notNanProportion(X[:,var]))
+                    vi[var].append(varimps[var] * utils.notNanProportion(X[X.columns[var]]))
                 else:
                     vi[var].append(varimps[var])
         else:
@@ -279,66 +282,42 @@ for data_path,class_name in data_paths:
         transform_numeric = transform, use_text=use_text, skip_class_questionnaire=True)#skip_class_questionnaire=False)
 
     X = data[data.columns[:-1]]
-    print(X.shape)
     y = data[class_name]
 
     # import pickle
     # with open('prognostic_model_'+ class_name[7:] + '_' + data_path[:-4] + '.pickle', 'rb') as handle:
     #     clf = pickle.load(handle)
 
-    ntimes = 50
-    ntrees = 101
-    replace = False
+    ntimes = 25
+    ntrees = 5001
     mtry = math.sqrt
     max_depth = None
     missing_branch = True
-    seed =  89444   
-    cutoff=0.5
-    balance = True
+    #seed =  89444   
+    replace = False
     vitype = 'auc'
-    # plot.plot_randomforest_accuracy(X,y,original_attributes,ntrees,replace,mtry,max_depth,missing_branch,ntimes,title='oi')
-    # exit()
+    cutoff=0.5
+    if('Ombro' in data_path):
+        balance = True
+    else:
+        balance = False
 
     print('--------------- MODEL: %r DATA PATH: %r' % (class_name, data_path))
-    clf = rf.RandomForest(ntrees=ntrees,oob_error=True,random_state=seed,
-        mtry=mtry,missing_branch=missing_branch,prob_answer=False,max_depth=max_depth,replace=replace,balance=False,random_subspace=True)
+
+    clf = feature_selection_threshold(X,y,ntrees,replace,mtry,max_depth,missing_branch,balance,
+    cutoff,ntimes=ntimes,title=class_name,missing_rate=True,vitype=vitype,vimissing=True,backwards=True,save_models=True)
     
-    clf.attributes = np.array(['Q44071_snDorPos', 'Q44071_opcLcSensTatil[C7]', 'Q61802_opctransferencias[SQ003]',
-         'Q44071_opcLcSensor[C7]', 'Q44071_opcLcSensTatil[C8]', 'Q44071_formTempoAval',  'Q44071_opcLcSensTatil[C6]',
-         'Q44071_opcForca[FlexDedos]', 'Q44071_opcLcSensor[C8]','Q44071_snFxPr',
-         'Q44071_opcLcSensTatil[T1]','Q44071_opcForca[AdDedos]','Q44071_snFxAt']) 
+    # clf = rf.RandomForest(ntrees=ntrees,oob_error=True,random_state=seed,
+    #     mtry=mtry,missing_branch=missing_branch,prob_answer=False,max_depth=max_depth,replace=replace,balance=False,random_subspace=True)
+    
+    # clf.attributes = np.array(['Q44071_snDorPos', 'Q44071_opcLcSensTatil[C7]', 'Q61802_opctransferencias[SQ003]',
+    #      'Q44071_opcLcSensor[C7]', 'Q44071_opcLcSensTatil[C8]', 'Q44071_formTempoAval',  'Q44071_opcLcSensTatil[C6]',
+    #      'Q44071_opcForca[FlexDedos]', 'Q44071_opcLcSensor[C8]','Q44071_snFxPr',
+    #      'Q44071_opcLcSensTatil[T1]','Q44071_opcForca[AdDedos]','Q44071_snFxAt']) 
     
     #clf1.attributes = np.array(['Q61802_opctransferencias[SQ003]', 'Q44071_opcForca[FlexCotovelo]','Q44071_snDesacordado','Q44071_lisTpAuxilio[Tipoia]','Q44071_lisTpAuxilio[Suporte]'])
     #clf1.attributes = np.array(['Q61802_opcLdCirurgia','Q44071_snCplexoAt', 'Q61802_opctransferencias[SQ003]', 'Q44071_opcForca[AbdOmbro]','Q44071_lisTpTrauma[moto]','Q44071_lisTpAuxilio[Tipoia]','Q44071_lisTpAuxilio[Suporte]'])
     #clf1.attributes = np.array(['Q44071_lisTpTrauma[moto]','Q44071_lisTpAuxilio[Tipoia]','Q44071_lisTpAuxilio[Suporte]','Q44071_snCplexoAt'])
-    import pandas as pd
-    attributes_indexes = [np.where(a == X.columns)[0][0] for a in clf.attributes]
-    Xfit = pd.DataFrame(X.values[:,attributes_indexes],columns=clf.attributes)
-    clf.fit(Xfit,y)
-    print(1-clf.oob_error_)
-    # fcs = clf1.feature_contribution()
-    # for feature_index in [0,1,2]:
-    #    plot.plot_feature_contributions_surgery_class(X,y,feature_index,fcs,attributes,'SUCESSO',title='AbdOmbro_contribuicao_'+attributes[feature_index])
-    data = read.readData(data_path = '../Patient3.csv', class_name = class_name, 
-        class_questionnaire =None, missing_input = missing_input, dummy = dummy,
-        transform_numeric = transform, use_text=use_text, skip_class_questionnaire=True)
-    #attributes_indexes = [np.where(a == original_attributes)[0][0] for a in attributes]
-    #print(attributes_indexes[:-1])
-
-    #print(data.shape)
-
-    X = data
-    print(clf.predict(X,prob=True))
-    # fcs = clf1.feature_contribution(X)
-    # plot.plot_feature_contributions_instance(X[0],fcs[0],attributes[:-1],'SUCESSO',title='AbdOmbro_classificacao')
-     #print(time.time()-tm)
-    exit()
-    # if('Ombro' in data_path):
-    #     vitype = 'auc'
-    # else:
-    #     vitype = 'err'
-    #clf = feature_selection_threshold(X,y,original_attributes,ntrees,replace,mtry,max_depth,missing_branch,balance,
-    #    cutoff,ntimes=ntimes, missing_rate=True,title=class_name,backwards=True,vitype=vitype)
 
 
     scores = 0
@@ -346,28 +325,28 @@ for data_path,class_name in data_paths:
     ivp,ifp,ifn,ivn,svp,sfp,sfn,svn = 0,0,0,0,0,0,0,0 
     #print(1-clf1.oob_error_)
     for i in range(X.shape[0]):
-        Xtrain  = np.concatenate([X[0:i],X[i+1:]])
-        ytrain = np.concatenate([y[0:i],y[i+1:]])
-        clf1.fit(Xtrain,ytrain, original_attributes)
+        Xtrain  = X.drop(i)#np.concatenate([X[0:i],X[i+1:]])
+        ytrain = y.drop(i) #np.concatenate([y[0:i],y[i+1:]])
+        clf.fit(Xtrain,ytrain)
         # clf1 = feature_selection_threshold(Xtrain,ytrain,original_attributes,ntrees,replace,mtry,max_depth,missing_branch,balance,
         #    cutoff,ntimes=ntimes,title=class_name,missing_rate=True,vitype=vitype,vimissing=True,backwards=True)
         
         if(y[i] == 'SUCESSO'):
-            if(clf1.predict(X[i]) == 'SUCESSO'):
+            if(clf.predict(X.loc[i]) == 'SUCESSO'):
                 svp+=1
                 ivn+=1
             else:
                 sfp+=1
                 ifn+=1
         else:
-            if(clf1.predict(X[i]) == 'SUCESSO'):
+            if(clf.predict(X.loc[i]) == 'SUCESSO'):
                 sfn+=1
                 ifp+=1
             else:
                 svn+=1
                 ivp+=1
-        scores += clf1.score(X[i],y[i]) 
-        s.append(clf1.score(X[i],y[i]))
+        scores += clf.score(X.loc[i],y.loc[i]) 
+        s.append(clf.score(X.loc[i],y.loc[i]))
     print('desvio: %r' % np.std(s))
     print(scores/X.shape[0])
     p = svp/(svp+sfp)
@@ -385,7 +364,7 @@ for data_path,class_name in data_paths:
         f = (2*p*c)/(p+c)
     print('INSATISFATÓRIO --- cobertura: %r precisão: %r medida-F: %r ' % (c,p,f))
 
-    exit()
+    #exit()
 
   
 

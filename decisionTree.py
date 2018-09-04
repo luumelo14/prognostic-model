@@ -259,8 +259,11 @@ class DecisionTreeClassifier(object):
     # for data X and comparing it with y.  
     def score(self, X, y,shuffle_attribute=None):
 
+        if(isinstance(y,pd.Series)):
+            y = y.values
         y_predict = self.predict(X,prob=False,shuffle_attribute=shuffle_attribute)
         n_samples = len(y)
+
 
         correct = 0
         for i in range(n_samples):

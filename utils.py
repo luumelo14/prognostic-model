@@ -11,7 +11,7 @@ def isnan(a):
 
 def isint(a):
 
-    if(isinstance(a,int)):
+    if(isinstance(a,int) or isinstance(a,np.int64)):
         return True
     if isinstance(a,float):
         return False
@@ -27,7 +27,7 @@ def isfloat(a):
 
     if(isinstance(a,float)):
         return True
-    if(isinstance(a,int)):
+    if(isinstance(a,int) or isinstance(a,np.int64)):
         return False
     try:
         float(a)
