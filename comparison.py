@@ -76,7 +76,7 @@ def feature_selection_threshold(X,y,ntrees,replace,mtry,max_depth,missing_branch
             cutoff=cutoff)
 
    
-        clf.fit(X[features],y)
+        clf.fit(X.values[features],y)
         clf.threshold = threshold
         scores.append(1-clf.oob_error_)
 
