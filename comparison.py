@@ -286,8 +286,8 @@ for data_path,class_name in data_paths:
     # with open('prognostic_model_'+ class_name[7:] + '_' + data_path[:-4] + '.pickle', 'rb') as handle:
     #     clf = pickle.load(handle)
 
-    ntimes = 2
-    ntrees = 21
+    ntimes = 25
+    ntrees = 5001
     mtry = math.sqrt
     max_depth = None
     missing_branch = True
