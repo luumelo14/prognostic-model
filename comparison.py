@@ -28,7 +28,6 @@ def feature_selection_threshold(X,y,ntrees,replace,mtry,max_depth,missing_branch
     # get average feature importances for each feature
     vis =  average_varimp(X,y,ntrees,replace,mtry,max_depth,missing_branch,
         missing_rate=missing_rate,ntimes=ntimes,select=False,mean=False,vitype=vitype,vimissing=vimissing,printvi=False)
-
     # if backwards is True, then the feature selection will start the process with all features,
     # and eliminating the least important ones in each step
     if(backwards is True):
@@ -75,8 +74,8 @@ def feature_selection_threshold(X,y,ntrees,replace,mtry,max_depth,missing_branch
             missing_branch=missing_branch,prob_answer=False,max_depth=max_depth,replace=replace,balance=balance,
             cutoff=cutoff)
 
-   
-        clf.fit(X.values[features],y)
+        
+        clf.fit(X.values[:,features],y)
         clf.threshold = threshold
         scores.append(1-clf.oob_error_)
 
@@ -123,7 +122,6 @@ def average_varimp(X,y,ntrees,replace,mtry,max_depth,missing_branch,vitype='err'
                 missing_branch=missing_branch,prob_answer=False,max_depth=max_depth,replace=replace,balance=True)
             clf.fit(X,y)
             varimps = clf.variable_importance(vitype=vimissing,vimissing=True)
-
             for var in varimps.keys():
                 if(missing_rate):
                     vi[var].append(varimps[var] * utils.notNanProportion(X[X.columns[var]]))
@@ -288,8 +286,8 @@ for data_path,class_name in data_paths:
     # with open('prognostic_model_'+ class_name[7:] + '_' + data_path[:-4] + '.pickle', 'rb') as handle:
     #     clf = pickle.load(handle)
 
-    ntimes = 25
-    ntrees = 5001
+    ntimes = 2
+    ntrees = 21
     mtry = math.sqrt
     max_depth = None
     missing_branch = True

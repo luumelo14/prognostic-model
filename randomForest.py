@@ -98,9 +98,7 @@ class RandomForest(object):
             Xfit = self.X 
             yfit = self.y
 
-
         self.forest = Parallel(n_jobs=-2)(delayed(self.create_trees)(n_samples, n_sub_samples, classes, min_class_index, t, Xfit, yfit) for t in range(self.ntrees))
-
 
         if self.oob_error is True:
             #print('Calculating oob error...')
@@ -144,6 +142,7 @@ class RandomForest(object):
                     err += 1
 
             self.oob_error_ = err / len(set(oob_set))
+
 
     def create_trees(self, n_samples, n_sub_samples, classes, min_class_index,i,X,y):
 
@@ -360,28 +359,27 @@ class RandomForest(object):
 
         variable_importance = {attribute: 0 for attribute in range(self.X.shape[1])}
         for t in self.forest:
+            for m in range(len(self.X.columns)):#t.feature_indices:
+                if(m in t.feature_indices):
                 #print(self.forest[t].attributes_in_tree)
-            for m in t.feature_indices:
+                    X_permuted = self.X.copy().values 
+                    if(vimissing is False):
+                        np.random.shuffle(X_permuted[:,m])
+                        sa = None
+                    else:
+                        sa = m
 
+                    if(vitype == 'auc'):
+                        if(len(set(y[t.oob])) > 1):
+                            ntreesc += 1
+                            auc_before = t.auc(self.X.values[t.oob],y.values[t.oob],shuffle_attribute=None,control_class=self.control_class)
+                            auc = t.auc(X_permuted[t.oob],y.values[t.oob],shuffle_attribute=sa,control_class=self.control_class)
+                            variable_importance[m] += auc_before - auc
 
-                X_permuted = self.X.copy().values 
-                if(vimissing is False):
-                    np.random.shuffle(X_permuted[:,m])
-                    sa = None
-                else:
-                    sa = m
-
-                if(vitype == 'auc'):
-                    if(len(set(y[t.oob])) > 1):
-                        ntreesc += 1
-                        auc_before = t.auc(self.X.values[t.oob],y.values[t.oob],shuffle_attribute=None,control_class=self.control_class)
-                        auc = t.auc(X_permuted[t.oob],y.values[t.oob],shuffle_attribute=sa,control_class=self.control_class)
-                        variable_importance[m] += auc_before - auc
-
-                else:    
-                    err = 1-t.score(self.X.values[t.oob],y[t.oob],shuffle_attribute=None)
-                    err_permuted = 1 - t.score(X_permuted[t.oob], y[t.oob],shuffle_attribute=sa)
-                    variable_importance[m] += (err_permuted - err)
+                    else:    
+                        err = 1-t.score(self.X.values[t.oob],y[t.oob],shuffle_attribute=None)
+                        err_permuted = 1 - t.score(X_permuted[t.oob], y[t.oob],shuffle_attribute=sa)
+                        variable_importance[m] += (err_permuted - err)
 
             
         return {a:b/ntreesc for a,b in variable_importance.items()} 
