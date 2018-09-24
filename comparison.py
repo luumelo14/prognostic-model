@@ -23,11 +23,11 @@ import pickle
 # Variable selection using random forests. Pattern Recogn. Lett. 31, 14 (October 2010), 2225-2236. 
 # DOI=http://dx.doi.org/10.1016/j.patrec.2010.03.014  
 def feature_selection_threshold(X,y,ntrees,replace,mtry,max_depth,missing_branch,balance,
-    cutoff,ntimes=25,title=None,missing_rate=False,vitype='err',vimissing=True,backwards=False,save_models=False):
+    cutoff,ntimes=25,title=None,missing_rate=False,vitype='err',vimissing=True,backwards=False,save_models=False,random_subspace=False):
     
     # get average feature importances for each feature
-    vis =  average_varimp(X,y,ntrees,replace,mtry,max_depth,missing_branch,
-        missing_rate=missing_rate,ntimes=ntimes,select=False,mean=False,vitype=vitype,vimissing=vimissing,printvi=False)
+    vis =  average_varimp(X,y,ntrees,replace,mtry,max_depth,missing_branch,balance=balance,
+        missing_rate=missing_rate,ntimes=ntimes,select=False,mean=False,vitype=vitype,vimissing=vimissing,printvi=False,random_subspace=random_subspace)
     # if backwards is True, then the feature selection will start the process with all features,
     # and eliminating the least important ones in each step
     if(backwards is True):
@@ -72,7 +72,7 @@ def feature_selection_threshold(X,y,ntrees,replace,mtry,max_depth,missing_branch
         seed = np.random.randint(0,10000)
         clf = rf.RandomForest(ntrees=ntrees,oob_error=True,random_state=seed,mtry=mtry,
             missing_branch=missing_branch,prob_answer=False,max_depth=max_depth,replace=replace,balance=balance,
-            cutoff=cutoff)
+            cutoff=cutoff,random_subspace=random_subspace)
 
         
         clf.fit(X.values[:,features],y)
@@ -95,7 +95,7 @@ def feature_selection_threshold(X,y,ntrees,replace,mtry,max_depth,missing_branch
 
     clf = rf.RandomForest(ntrees=ntrees,oob_error=True,random_state=seed,mtry=mtry,
             missing_branch=missing_branch,prob_answer=False,max_depth=max_depth,replace=replace,balance=balance,
-            cutoff=cutoff)
+            cutoff=cutoff,random_subspace=random_subspace)
     
     #clf.attributes = attributes[get_slice(ordered_features,stop_indexes[index])]
     clf.fit(X[X.columns[get_slice(ordered_features,stop_indexes[index])]],y)
@@ -112,14 +112,14 @@ def feature_selection_threshold(X,y,ntrees,replace,mtry,max_depth,missing_branch
 
 
 
-def average_varimp(X,y,ntrees,replace,mtry,max_depth,missing_branch,vitype='err',vimissing=True,ntimes=25,
-    select=True,printvi=False,plotvi=False,cutpoint=0.0,mean=False,title=None, missing_rate=False):
+def average_varimp(X,y,ntrees,replace,mtry,max_depth,missing_branch,balance,vitype='err',vimissing=True,ntimes=25,
+    select=True,printvi=False,plotvi=False,cutpoint=0.0,mean=False,title=None, missing_rate=False,random_subspace=False):
     vi = {a: [] for a in range(X.shape[1])}
     for i in range(X.shape[0]):
         if(i < ntimes):
             seed = np.random.randint(0,10000)
             clf = rf.RandomForest(ntrees=ntrees,oob_error=True,random_state=seed,mtry=mtry,
-                missing_branch=missing_branch,prob_answer=False,max_depth=max_depth,replace=replace,balance=True)
+                missing_branch=missing_branch,prob_answer=False,max_depth=max_depth,replace=replace,balance=balance,random_subspace=random_subspace)
             clf.fit(X,y)
             varimps = clf.variable_importance(vitype=vimissing,vimissing=True)
             for var in varimps.keys():
@@ -281,6 +281,7 @@ for data_path,class_name in data_paths:
 
     X = data[data.columns[:-1]]
     y = data[class_name]
+    print(X.shape)
 
     # import pickle
     # with open('prognostic_model_'+ class_name[7:] + '_' + data_path[:-4] + '.pickle', 'rb') as handle:
@@ -303,7 +304,7 @@ for data_path,class_name in data_paths:
     print('--------------- MODEL: %r DATA PATH: %r' % (class_name, data_path))
 
     clf = feature_selection_threshold(X,y,ntrees,replace,mtry,max_depth,missing_branch,balance,
-    cutoff,ntimes=ntimes,title=class_name,missing_rate=True,vitype=vitype,vimissing=True,backwards=True,save_models=True)
+    cutoff,ntimes=ntimes,title=class_name,missing_rate=True,vitype=vitype,vimissing=True,backwards=True,save_models=True,random_subspace=True)
     
     # clf = rf.RandomForest(ntrees=ntrees,oob_error=True,random_state=seed,
     #     mtry=mtry,missing_branch=missing_branch,prob_answer=False,max_depth=max_depth,replace=replace,balance=False,random_subspace=True)
