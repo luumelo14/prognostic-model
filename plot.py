@@ -48,11 +48,17 @@ def plot_feature_importance_vs_accuracy(xvalues,yvalues,xlabel='threshold',title
     plt.ylabel('accuracy (1 - OOB error)')
     
     if(title):
+        import json
         plt.title(title)
         plt.savefig('threshold_accuracy_plot_'+title+'.png')
         plt.close()
-        f = open('threshold_accuracy_data_'+title+'.txt', 'w')
-        f.write('xvalues= %r \nyvalues= %r \nspecial= %r' % (xvalues,yvalues,special))       
+        #f = open('threshold_accuracy_data_'+title+'.txt', 'w')
+        F = {'data': [(a,b) for (a,b) in zip(xvalues,yvalues)], 'special': special}
+        f = open('threshold_accuracy_data_'+title_'.json','w')
+        jsonfile = json.dumps(F,ensure_ascii=False)
+        f.write(jsonfile)
+
+        #f.write('xvalues= %r \nyvalues= %r \nspecial= %r' % (xvalues,yvalues,special))       
     else:
         plt.show()
         print(xvalues,yvalues)

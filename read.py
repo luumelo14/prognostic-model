@@ -24,7 +24,7 @@ sw = ['a', 'ao', 'aos', 'aquela', 'aquelas', 'aquele', 'aqueles', 'aquilo', 'as'
  'tu', 'tua', 'tuas', 'ter','teve','tem', 'tínhamos', 'um', 'uma', 'você', 'vocês', 'vos', 'à', 'às', 'éramos']
 
 
-def readData(class_name,class_questionnaire='Q92510',data_path=None,missing_input='mean',dummy=False,transform_numeric = True,use_text=True,skip_class_questionnaire=True):
+def readData(class_name,class_questionnaire='Q92510',data_path=None,missing_input='none',dummy=False,transform_numeric = False,use_text=False,skip_class_questionnaire=True):
 	# attributes are separated by commas (',')
 	# "nan" is assigned to fields with 'N/A' or 'None'
 
@@ -45,7 +45,7 @@ def readData(class_name,class_questionnaire='Q92510',data_path=None,missing_inpu
 	data = (data.drop(data.columns[data.columns.str.endswith('ipaddr')],1))
 	data = (data.drop(data.columns[data.columns.str.endswith('date')],1))
 	data = (data.drop(data.columns[data.columns.str.endswith('stamp')],1))
-	data = (data.drop(data.columns[data.columns.str.endswith('participant_code')],1))
+	#data = (data.drop(data.columns[data.columns.str.endswith('participant_code')],1))
 	data = (data.drop(data.columns[data.columns.str.endswith('datLesao')],1))
 	data = (data.drop(data.columns[data.columns.str.endswith('datNasc')],1))
 	# data = (data.drop(data.columns[data.columns.str.endswith('Origem')],1))

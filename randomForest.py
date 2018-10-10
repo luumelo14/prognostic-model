@@ -180,7 +180,7 @@ class RandomForest(object):
 
         if(prob is None):
             prob = self.prob
-        if(len(np.array(X).shape) == 1): 
+        if(X.shape[0] == 1 or len(np.array(X).shape) == 1): 
             if(isinstance(X,pd.DataFrame) and len(X) != self.X.shape[1]):
                 X = X[X.columns[[np.where(a == X.columns)[0][0] for a in self.X.columns if a in X.columns]]]
                 for f in range(len(self.X.columns)):
@@ -242,8 +242,8 @@ class RandomForest(object):
     # Retrieved from http://eprints.whiterose.ac.uk/79159/1/feature_contribution_camera_ready.pdf
     def feature_contribution(self,X=None):
         print('calculating feature contribution')
-        C = set(self.y)
-        if(X == None):
+        #C = set(self.y)
+        if(X is None):
             if(isinstance(self.X,pd.DataFrame)):
                 X = self.X.values
             else:
@@ -255,6 +255,14 @@ class RandomForest(object):
                     if(self.X.columns[f] not in X.columns):
                         X.insert(f,self.X.columns[f],[np.nan]*X.shape[0])
                 X = X.values
+        if(self.control_class is None):
+            if('SUCESSO' in set(self.y)):
+                control_class = 'SUCESSO'
+            else:
+                control_class = list(set(self.y))[0]
+            print('Control class set as %r' % control_class)
+        else:
+            control_class = self.control_class 
 
 
         fcs = []
@@ -263,80 +271,81 @@ class RandomForest(object):
 
             FC = {}
             c = 0
-            for k in C:
-                t_index = 0
-                # if(i_index == 9):
-                #     import pdb
-                #     pdb.set_trace()
+            #for k in C:
+            t_index = 0
+            # if(i_index == 9):
+            #     import pdb
+            #     pdb.set_trace()
+            
+            for t in self.forest:
+                if(i in self.forest[t_index].oob):
+                    #print(oob[t_index])
+                    t_index+=1
+                    continue
+
+                t_index +=1
+                child_list = [[1,t.root]]   
                 
-                for t in self.forest:
-                    if(i in self.forest[t_index].oob):
-                        #print(oob[t_index])
-                        t_index+=1
-                        continue
 
-                    t_index +=1
-                    child_list = [[1,t.root]]   
+                while len(child_list) > 0:
+                    w, parent = child_list.pop(0)
                     
+                    while parent.is_class is False:
+                        f = parent.feature_index
 
-                    while len(child_list) > 0:
-                        w, parent = child_list.pop(0)
-                        
-                        while parent.is_class is False:
-                            f = parent.feature_index
+                        #print(i[f])
+                        #print(parent.values)
+                        if(f not in FC.keys()):
+                            FC[f] = 0
+                        #    FC[f] =  {c:0 for c in C}
 
-                            #print(i[f])
-                            #print(parent.values)
-                            if(f not in FC.keys()):
-                                FC[f] =  {c:0 for c in C}
-
-                            if(utils.isnan(X[i][f])):
-                                if(parent.branch_nan is None):
-                                    sp = sum(parent.distr.values())
-                                    for c in parent.branches:
-                                        child_list.append([round(w*(sum(c.distr.values()))/sp,2),c])
-                                    w,child = child_list.pop(0)
-                                else:
-                                    child = parent.branch_nan
+                        if(utils.isnan(X[i][f])):
+                            if(parent.branch_nan is None):
+                                sp = sum(parent.distr.values())
+                                for c in parent.branches:
+                                    child_list.append([round(w*(sum(c.distr.values()))/sp,2),c])
+                                w,child = child_list.pop(0)
                             else:
-                                if(len(parent.values) == 1):
-                                    if X[i][f] <= parent.values[0]:
-                                        child = parent.branches[0]
-                                    else:
-                                        child = parent.branches[1]
+                                child = parent.branch_nan
+                        else:
+                            if(len(parent.values) == 1):
+                                if X[i][f] <= parent.values[0]:
+                                    child = parent.branches[0]
                                 else:
-                                    if(str(X[i][f]) not in parent.values):
-                                        if(parent.branch_nan is None):
-                                            sp = sum(parent.distr.values())
-                                            for c in parent.branches:
-                                                child_list.append([round(w*(sum(c.distr.values()))/sp,2),c])
-                                            w,child = child_list.pop(0)
-                                        else:
-                                            child = parent.branch_nan
-
+                                    child = parent.branches[1]
+                            else:
+                                if(str(X[i][f]) not in parent.values):
+                                    if(parent.branch_nan is None):
+                                        sp = sum(parent.distr.values())
+                                        for c in parent.branches:
+                                            child_list.append([round(w*(sum(c.distr.values()))/sp,2),c])
+                                        w,child = child_list.pop(0)
                                     else:
+                                        child = parent.branch_nan
 
-                                        child = parent.branches[parent.values.index(str(X[i][f]))]
+                                else:
+
+                                    child = parent.branches[parent.values.index(str(X[i][f]))]
 
 
+                        sc = sum(child.distr.values())
+                        if(sc == 0):
+                            child.distr = t.root.distr
                             sc = sum(child.distr.values())
-                            if(sc == 0):
-                                child.distr = t.root.distr
-                                sc = sum(child.distr.values())
-                            sp = sum(parent.distr.values())
+                        sp = sum(parent.distr.values())
 
-                            FC[f][k] = FC[f][k] + w*(child.distr[k]/sc - parent.distr[k]/sp)
+                        FC[f] = FC[f] + w*(child.distr[control_class]/sc - parent.distr[control_class]/sp)
 
-                            parent = child
+                        parent = child
 
             for element in FC:
-                for el in FC[element]:
-                    FC[element][el] = FC[element][el] / self.ntrees
+                FC[element] = FC[element] / self.ntrees
+                #for el in FC[element]:
+                #    FC[element][el] = FC[element][el] / self.ntrees
 
             fcs.append(FC)
-
         return fcs
-
+        
     # variable importance calculation for Random Forests.
     # --- when vitype='err' and vimissing=False, then calculation is made as proposed in:
     #       Breiman, L. (2001). Random Forests. Machine Learning, 45(1), 5–32.
