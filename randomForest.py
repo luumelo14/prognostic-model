@@ -180,7 +180,7 @@ class RandomForest(object):
 
         if(prob is None):
             prob = self.prob
-        if(X.shape[0] == 1 or len(np.array(X).shape) == 1): 
+        if(len(np.array(X).shape) == 1 or np.array(X).shape[0] == 1): 
             if(isinstance(X,pd.DataFrame) and len(X) != self.X.shape[1]):
                 X = X[X.columns[[np.where(a == X.columns)[0][0] for a in self.X.columns if a in X.columns]]]
                 for f in range(len(self.X.columns)):

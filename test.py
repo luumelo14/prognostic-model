@@ -1,6 +1,7 @@
 import decisionTree as dt 
 import randomForest as rf
 import numpy as np
+import pandas as pd
 import read 
 import utils
 import math
@@ -26,11 +27,24 @@ assert(utils.isfloat('12.984'))
 assert(utils.isfloat('-0.4'))
 assert(not utils.isfloat('9'))
 
+original_attributes = np.array(['Outlook','Temp','Humidity','Windy?','Class'])
+data = pd.DataFrame([['SUNNY',75,70,'T','PLAY'],
+['SUNNY',80,90,'T',"DON'T PLAY"],
+['SUNNY',85,85,'F',"DON'T PLAY"],
+['SUNNY',72,95,'F',"DON'T PLAY"],
+['SUNNY',69,70,'F','PLAY'],
+['OVERCAST',72,90,'T','PLAY'],
+['OVERCAST',83,78,'F','PLAY'],
+['OVERCAST',64,65,'T','PLAY'],
+['OVERCAST',81,75,'F','PLAY'],
+['RAIN',71,80,'T',"DON'T PLAY"],
+['RAIN',65,70,'T',"DON'T PLAY"],
+['RAIN',75,80,'F','PLAY'],
+['RAIN',68,80,'F','PLAY'],
+['RAIN',70,96,'F','PLAY']],dtype='object', columns=original_attributes)
 
-data, original_attributes, categories  = read.readData(data_path = 'Dados/Test.csv', class_name='Class',
-    dummy=dummy,transform_numeric=transform,use_text = use_text,missing_input='none')
-X = data[:,0:-1]
-y = np.array(data[:,-1])
+X = data[data.columns[:-1]].values
+y = data['Class'].values
 print('Testing entropy, information gain, gain ratio...')
 assert(utils.entropy([1,0,0,1,0,1]) == 1)
 assert(utils.entropy([1,1,1]) == 0)
@@ -50,21 +64,23 @@ print('Testing Decision Tree...')
 m = dt.DecisionTreeClassifier(missing_branch=False)
 m.fit(X,y)
 m.to_pdf(original_attributes,out='tree1.pdf')
-assert(m.predict((['OVERCAST',80,90,'T'])) == 'Play'.upper())
-assert(m.predict(['RAIN',80,50,'F']) == 'Play'.upper())
-assert(m.predict(['RAIN',80,70,'T']) == "Don't Play".upper())
-assert(m.predict(['SUNNY',50,50,'T']) == 'Play'.upper())
-assert(m.predict(['SUNNY',50,91,'T']) == "Don't Play".upper())
-assert(m.predict([np.nan,50,91,'T']) == "Don't Play".upper())
+assert(m.predict((['OVERCAST',80,90,'T'])) == 'PLAY')
+assert(m.predict(['RAIN',80,50,'F']) == 'PLAY')
+assert(m.predict(['RAIN',80,70,'T']) == "DON'T PLAY")
+assert(m.predict(['SUNNY',50,50,'T']) =='PLAY')
+assert(m.predict(['SUNNY',50,91,'T']) =="DON'T PLAY")
+assert(m.predict([np.nan,50,91,'T']) == "DON'T PLAY")
+
+
 
 print('Testing Decision Tree with missing values (branch_nan = True)...')
 m = dt.DecisionTreeClassifier(missing_branch=True)
-data, attributes, categories  = read.readData(data_path = 'Dados/Test_with_nan.csv', class_name='Class',
-    dummy=dummy,transform_numeric=transform,use_text = use_text,missing_input='none')
-X = data[:,0:-1]
-y = np.array(data[:,-1])
+# data, attributes, categories  = read.readData(data_path = '../Dados/Test_with_nan.csv', class_name='Class',
+#     dummy=dummy,transform_numeric=transform,use_text = use_text,missing_input='none')
+X[5][0] = np.nan# X = data[:,0:-1]
+# y = np.array(data[:,-1])
 m.fit(X,y)
-m.to_dot(original_attributes,out='testwithnan.dot')
+m.to_pdf(original_attributes,out='out.pdf')
 outlook_index = np.where(original_attributes == 'Outlook')[0][0]
 not_nan_rows = [a for a in range(X.shape[0]) if not utils.isnan(X[:,outlook_index][a])]
 Xnotnan = (X[not_nan_rows,:])
@@ -85,8 +101,8 @@ print('Testing Decision Tree with missing values (branch_nan = False)...')
 m = dt.DecisionTreeClassifier(missing_branch=False)
 
 m.fit(X,y)
-m.to_dot(original_attributes,out='testwithnanf.dot')
-#m.to_pdf(original_attributes,out='out.pdf')
+#m.to_dot(original_attributes,out='testwithnanf.dot')
+m.to_pdf(original_attributes,out='out1.pdf')
 outlook_index = np.where(original_attributes == 'Outlook')[0][0]
 not_nan_rows = [a for a in range(X.shape[0]) if not utils.isnan(X[:,outlook_index][a])]
 Xnotnan = (X[not_nan_rows,:])
@@ -114,22 +130,25 @@ print('Testing Random Forest...')
 clf = rf.RandomForest(ntrees=8,mtry=math.sqrt,oob_error=True,random_state=9,missing_branch=False,prob_answer=False,max_depth=3,replace=False)
 clf.fit(X,y)
 fcs = clf.feature_contribution()
-clf.forest[-1].to_dot(original_attributes,out='out.dot')
+#clf.forest[-1].to_dot(original_attributes,out='out.dot')
 
-clf.forest[-1].to_pdf(original_attributes,out='out.pdf')
+clf.forest[-1].to_pdf(original_attributes,out='out2.pdf')
 
 print("Testing Random Forest with missing data...")
-data, original_attributes, categories  = read.readData(data_path = 'Dados/Test_with_nan2.csv', class_name='Class',
-    dummy=dummy,transform_numeric=transform,use_text = use_text,missing_input='none')
+# data = read.readData(data_path = '../Dados/Test_with_nan2.csv', class_name='Class',
+#     dummy=dummy,transform_numeric=transform,use_text = use_text,missing_input='none')
 
-X = data[:,0:-1]
-y = np.array(data[:,-1])
+X = data[data.columns[:-1]].values
+y = data['Class'].values
+X[0][3] = np.nan
+X[5][0] = np.nan
+X[5][3] = np.nan
+X[9][2] = np.nan
 m = rf.RandomForest(ntrees=3,oob_error=True,random_state=9,missing_branch=False,prob_answer=False,
     max_depth=3,replace=False,balance=True)
 
 m.fit(X,y)
 import pickle
-
 with open('saved_model.pickle','wb') as handle:
    pickle.dump(m,handle)
 print('Testing if model was saved correctly...')
@@ -141,9 +160,10 @@ if(m.oob_error_ == 0.428571429):
     assert(m.predict(['RAIN',74,81,'T']) == ["Don't Play".upper()])
 # print(m.predict(['Feminino',23,np.nan,'Não'],prob=True))
 # exit()
+
 print('Testing Random Forest score method...')
 assert(m.score([['RAIN',63,50,'T'],['SUNNY',66,90,'F'],['SUNNY',50,50,'T'],
-    ['OVERCAST',70,50,'F']], ['PLAY','PLAY','PLAY','PLAY']) == accuracy_score(clf.predict(([['RAIN',63,50,'T'],['SUNNY',66,90,'F'],['SUNNY',50,50,'T'],
+    ['OVERCAST',70,50,'F']], ['PLAY','PLAY','PLAY','PLAY']) == accuracy_score(m.predict(([['RAIN',63,50,'T'],['SUNNY',66,90,'F'],['SUNNY',50,50,'T'],
     ['OVERCAST',70,50,'F']])), ['PLAY','PLAY','PLAY','PLAY']))
 
 print('Done!')
@@ -177,7 +197,7 @@ print('Done!')
 # m.to_dot(attributes,out='out.dot')
 
 exit()
-data, original_attributes, categories  = read.readData(data_path = 'Dados/TestBaloonAdultAct.csv', class_name='inflated',
+data, original_attributes, categories  = read.readData(data_path = '../Dados/TestBaloonAdultAct.csv', class_name='inflated',
     dummy=dummy,transform_numeric=transform,use_text = use_text,missing_input='none')
 X = data[:,0:-1]
 y = np.array(data[:,-1])
