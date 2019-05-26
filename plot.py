@@ -54,7 +54,7 @@ def plot_feature_importance_vs_accuracy(xvalues,yvalues,xlabel='threshold',title
         plt.close()
         #f = open('threshold_accuracy_data_'+title+'.txt', 'w')
         F = {'data': [(a,b) for (a,b) in zip(xvalues,yvalues)], 'special': special}
-        f = open('threshold_accuracy_data_'+title_'.json','w')
+        f = open('threshold_accuracy_data_'+title+'.json','w')
         jsonfile = json.dumps(F,ensure_ascii=False)
         f.write(jsonfile)
 
