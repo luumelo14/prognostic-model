@@ -75,7 +75,7 @@ def feature_selection_threshold(X,y,ntrees,replace,mtry,max_depth,missing_branch
             cutoff=cutoff,random_subspace=random_subspace)
 
         
-        clf.fit(X.values[:,features],y)
+        clf.fit(X[X.columns[features]],y)
         clf.threshold = threshold
         scores.append(1-clf.oob_error_)
 
@@ -288,12 +288,12 @@ def get_data_info():
     return data_path,class_questionnaire,class_name
 
 if __name__ == '__main__':
-    # data_paths = [['../DorCirurgiaCategNAReduzido.csv','Q92510_snDorPos'],
-    # ['../AbdOmbroCirurgiaCategNAReduzido.csv','Q92510_opcForca[AbdOmbro]'],
-    # ['../FlexCotoveloCirurgiaCategNAReduzido.csv','Q92510_opcForca[FlexCotovelo]'],
-    # ['../RotEOmbroCirurgiaCategNAReduzido.csv','Q92510_opcForca[RotEOmbro]']]
-    data_path,class_questionnaire,class_name = get_data_info()
-
+    data_paths = [['DorCirurgiaCategNAReduzido.csv','Q92510_snDorPos'],
+    ['AbdOmbroCirurgiaCategNAReduzido.csv','Q92510_opcForca[AbdOmbro]'],
+    ['FlexCotoveloCirurgiaCategNAReduzido.csv','Q92510_opcForca[FlexCotovelo]'],
+    ['RotEOmbroCirurgiaCategNAReduzido.csv','Q92510_opcForca[RotEOmbro]']]
+    #data_path,class_questionnaire,class_name = get_data_info()
+    class_questionnaire = 'Q92510'
     missing_input= 'none' #'mean'
     transform = False
     scale = True
@@ -304,76 +304,76 @@ if __name__ == '__main__':
     import random
     seed = random.randint(0,10000)
 
+    for data_path,class_name in data_paths:
+        data = read.readData(data_path = data_path, class_name = class_name, 
+            class_questionnaire = class_questionnaire, missing_input = missing_input, dummy = dummy,
+            transform_numeric = transform, use_text=use_text, skip_class_questionnaire=True)#skip_class_questionnaire=False)
 
-    data = read.readData(data_path = data_path, class_name = class_name, 
-        class_questionnaire = class_questionnaire, missing_input = missing_input, dummy = dummy,
-        transform_numeric = transform, use_text=use_text, skip_class_questionnaire=True)#skip_class_questionnaire=False)
+        X = data[data.columns[:-1]]
+        y = data[class_name]
 
-    X = data[data.columns[:-1]]
-    y = data[class_name]
-
-    ntimes = 5
-    ntrees = 21
-    mtry = math.sqrt
-    max_depth = None
-    missing_branch = True
-    #seed =  89444   
-    replace = False
-    vitype = 'auc'
-    cutoff=0.5
-    if('Ombro' in data_path):
-        balance = True
-    else:
-        balance = False
-
-    print('--------------- MODEL: %r DATA PATH: %r' % (class_name, data_path))
-
-    clf = feature_selection_threshold(X,y,ntrees,replace,mtry,max_depth,missing_branch,balance,
-    cutoff,ntimes=ntimes,title=class_name,missing_rate=True,vitype=vitype,vimissing=True,backwards=True,save_models=True,random_subspace=True)
-
-    scores = 0
-    s = []
-    ivp,ifp,ifn,ivn,svp,sfp,sfn,svn = 0,0,0,0,0,0,0,0 
-    #print(1-clf1.oob_error_)
-    for i in range(X.shape[0]):
-        Xtrain  = X.drop(i)#np.concatenate([X[0:i],X[i+1:]])
-        ytrain = y.drop(i) #np.concatenate([y[0:i],y[i+1:]])
-        clf.fit(Xtrain,ytrain)
-        # clf1 = feature_selection_threshold(Xtrain,ytrain,original_attributes,ntrees,replace,mtry,max_depth,missing_branch,balance,
-        #    cutoff,ntimes=ntimes,title=class_name,missing_rate=True,vitype=vitype,vimissing=True,backwards=True)
-        
-        if(y[i] == 'SUCESSO'):
-            if(clf.predict(X.loc[i]) == 'SUCESSO'):
-                svp+=1
-                ivn+=1
-            else:
-                sfp+=1
-                ifn+=1
+        ntimes = 2
+        ntrees = 5
+        mtry = math.sqrt
+        max_depth = None
+        missing_branch = True
+        #seed =  89444   
+        replace = False
+        vitype = 'auc'
+        cutoff=0.5
+        if('Ombro' in data_path):
+            balance = True
         else:
-            if(clf.predict(X.loc[i]) == 'SUCESSO'):
-                sfn+=1
-                ifp+=1
-            else:
-                svn+=1
-                ivp+=1
-        scores += clf.score(X.loc[i],y.loc[i]) 
-        s.append(clf.score(X.loc[i],y.loc[i]))
-    print('desvio: %r' % np.std(s))
-    print(scores/X.shape[0])
-    p = svp/(svp+sfp)
-    c = svp/(svp+sfn)
-    if(p + c == 0):
-        f = 0
-    else:
-        f = (2*p*c)/(p+c)
-    print('SUCESSO --- cobertura: %r precisão: %r medida-F: %r ' % (c,p,f))
-    p = ivp/(ivp+ifp)
-    c = ivp/(ivp+ifn)
-    if(p + c == 0):
-        f = 0
-    else:
-        f = (2*p*c)/(p+c)
-    print('INSATISFATÓRIO --- cobertura: %r precisão: %r medida-F: %r ' % (c,p,f))
+            balance = False
 
-    #exit()
+        print('--------------- MODEL: %r DATA PATH: %r' % (class_name, data_path))
+
+        clf = feature_selection_threshold(X,y,ntrees,replace,mtry,max_depth,missing_branch,balance,
+        cutoff,ntimes=ntimes,title=class_name,missing_rate=True,vitype=vitype,vimissing=True,backwards=True,save_models=True,random_subspace=True)
+
+        scores = 0
+        s = []
+        ivp,ifp,ifn,ivn,svp,sfp,sfn,svn = 0,0,0,0,0,0,0,0 
+        #print(1-clf1.oob_error_)
+        for i in range(X.shape[0]):
+            Xtrain  = X.drop(i)#np.concatenate([X[0:i],X[i+1:]])
+            ytrain = y.drop(i) #np.concatenate([y[0:i],y[i+1:]])
+            clf.fit(Xtrain,ytrain)
+            # clf1 = feature_selection_threshold(Xtrain,ytrain,original_attributes,ntrees,replace,mtry,max_depth,missing_branch,balance,
+            #    cutoff,ntimes=ntimes,title=class_name,missing_rate=True,vitype=vitype,vimissing=True,backwards=True)
+            
+            if(y[i] == 'SUCESSO'):
+                if(clf.predict(X.loc[i]) == 'SUCESSO'):
+                    svp+=1
+                    ivn+=1
+                else:
+                    sfp+=1
+                    ifn+=1
+            else:
+                if(clf.predict(X.loc[i]) == 'SUCESSO'):
+                    sfn+=1
+                    ifp+=1
+                else:
+                    svn+=1
+                    ivp+=1
+            scores += clf.score(X.loc[i],y.loc[i]) 
+            s.append(clf.score(X.loc[i],y.loc[i]))
+        print('desvio: %r' % np.std(s))
+        print(scores/X.shape[0])
+        p = svp/(svp+sfp)
+        c = svp/(svp+sfn)
+        if(p + c == 0):
+            f = 0
+        else:
+            f = (2*p*c)/(p+c)
+        print('SUCESSO --- cobertura: %r precisão: %r medida-F: %r ' % (c,p,f))
+        p = ivp/(ivp+ifp)
+        c = ivp/(ivp+ifn)
+        if(p + c == 0):
+            f = 0
+        else:
+            f = (2*p*c)/(p+c)
+        print('INSATISFATÓRIO --- cobertura: %r precisão: %r medida-F: %r ' % (c,p,f))
+
+        #exit()
 

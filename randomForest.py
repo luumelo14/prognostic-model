@@ -57,6 +57,7 @@ class RandomForest(object):
 
         self.forest = []
         self.X = X
+        self.attributes = X.columns
         if(isinstance(y,pd.Series)):
             self.y = y.values
         else:
@@ -98,7 +99,7 @@ class RandomForest(object):
             Xfit = self.X 
             yfit = self.y
     
-        self.forest = Parallel(n_jobs=-2,backend='multiprocessing')(delayed(self.create_trees)(n_samples, n_sub_samples, classes, min_class_index, t, Xfit, yfit) for t in range(self.ntrees))
+        self.forest = Parallel(n_jobs=-2,backend="multiprocessing")(delayed(self.create_trees)(n_samples, n_sub_samples, classes, min_class_index, t, Xfit, yfit) for t in range(self.ntrees))
 
         if self.oob_error is True:
             #print('Calculating oob error...')
@@ -254,7 +255,7 @@ class RandomForest(object):
                 for f in range(len(self.X.columns)):
                     if(self.X.columns[f] not in X.columns):
                         X.insert(f,self.X.columns[f],[np.nan]*X.shape[0])
-                X = X.values
+            X = X.values
         if(self.control_class is None):
             if('SUCESSO' in set(self.y)):
                 control_class = 'SUCESSO'
