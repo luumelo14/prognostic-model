@@ -256,14 +256,45 @@ def select_params(X,y):
     print('10 best parameters:')
     for a,b in zip(np.array(parameters)[np.array(final_scores).argsort()[:10]], np.array(sorted(final_scores)[:10])):
         print('%r : %r ' % (a,b))
+    
+def get_data_info():
+    valid_input = False
+    
+    while(not valid_input):
+        data_path = input("Please provide the path to the csv file: ")
+        if(data_path[-3:] != "csv"):
+            print("%s is not a csv file. Please provide a path to csv file." % data_path)
+        else:
+            valid_input = True
+
+    #default values
+    class_questionnaire = 'Q92510'
+    if("Dor" in data_path):
+        class_name='Q92510_snDorPos'
+    elif("AbdOmbro" in data_path):
+        class_name='Q92510_opcForca[AbdOmbro]'
+    elif("FlexCotovelo" in data_path):
+        class_name='Q92510_opcForca[FlexCotovelo]'
+    elif("RotEOmbro" in data_path):
+        class_name='Q92510_opcForca[RotEOmbro]'
+
+    cq = input("Please provide the questionnaire code for the OUTCOME data file. Default value: 'Q92510'")
+    if(len(cq) > 3 ):
+        class_questionnaire = cq
+
+    cn = input("Please provide the class name (outcome question code). Default value: %s " % class_name)
+    if(len(cn) > 3):
+        class_name = cn
+    return data_path,class_questionnaire,class_name
 
 
-data_paths = [['../DorCirurgiaCategNAReduzido.csv','Q92510_snDorPos'],
-['../AbdOmbroCirurgiaCategNAReduzido.csv','Q92510_opcForca[AbdOmbro]'],
-['../FlexCotoveloCirurgiaCategNAReduzido.csv','Q92510_opcForca[FlexCotovelo]'],
-['../RotEOmbroCirurgiaCategNAReduzido.csv','Q92510_opcForca[RotEOmbro]']]
 
-class_questionnaire = 'Q92510'
+# data_paths = [['../DorCirurgiaCategNAReduzido.csv','Q92510_snDorPos'],
+# ['../AbdOmbroCirurgiaCategNAReduzido.csv','Q92510_opcForca[AbdOmbro]'],
+# ['../FlexCotoveloCirurgiaCategNAReduzido.csv','Q92510_opcForca[FlexCotovelo]'],
+# ['../RotEOmbroCirurgiaCategNAReduzido.csv','Q92510_opcForca[RotEOmbro]']]
+data_path,class_questionnaire,class_name = get_data_info()
+
 missing_input= 'none' #'mean'
 transform = False
 scale = True
@@ -274,96 +305,78 @@ use_feature_selection = False
 import random
 seed = random.randint(0,10000)
 
-for data_path,class_name in data_paths:
-    data = read.readData(data_path = data_path, class_name = class_name, 
-        class_questionnaire = class_questionnaire, missing_input = missing_input, dummy = dummy,
-        transform_numeric = transform, use_text=use_text, skip_class_questionnaire=True)#skip_class_questionnaire=False)
 
-    X = data[data.columns[:-1]]
-    y = data[class_name]
-    print(X.shape)
+data = read.readData(data_path = data_path, class_name = class_name, 
+    class_questionnaire = class_questionnaire, missing_input = missing_input, dummy = dummy,
+    transform_numeric = transform, use_text=use_text, skip_class_questionnaire=True)#skip_class_questionnaire=False)
 
-    # import pickle
-    # with open('prognostic_model_'+ class_name[7:] + '_' + data_path[:-4] + '.pickle', 'rb') as handle:
-    #     clf = pickle.load(handle)
+X = data[data.columns[:-1]]
+y = data[class_name]
 
-    ntimes = 25
-    ntrees = 5001
-    mtry = math.sqrt
-    max_depth = None
-    missing_branch = True
-    #seed =  89444   
-    replace = False
-    vitype = 'auc'
-    cutoff=0.5
-    if('Ombro' in data_path):
-        balance = True
-    else:
-        balance = False
+ntimes = 25
+ntrees = 5001
+mtry = math.sqrt
+max_depth = None
+missing_branch = True
+#seed =  89444   
+replace = False
+vitype = 'auc'
+cutoff=0.5
+if('Ombro' in data_path):
+    balance = True
+else:
+    balance = False
 
-    print('--------------- MODEL: %r DATA PATH: %r' % (class_name, data_path))
+print('--------------- MODEL: %r DATA PATH: %r' % (class_name, data_path))
 
-    clf = feature_selection_threshold(X,y,ntrees,replace,mtry,max_depth,missing_branch,balance,
-    cutoff,ntimes=ntimes,title=class_name,missing_rate=True,vitype=vitype,vimissing=True,backwards=True,save_models=True,random_subspace=True)
+clf = feature_selection_threshold(X,y,ntrees,replace,mtry,max_depth,missing_branch,balance,
+cutoff,ntimes=ntimes,title=class_name,missing_rate=True,vitype=vitype,vimissing=True,backwards=True,save_models=True,random_subspace=True)
+
+scores = 0
+s = []
+ivp,ifp,ifn,ivn,svp,sfp,sfn,svn = 0,0,0,0,0,0,0,0 
+#print(1-clf1.oob_error_)
+for i in range(X.shape[0]):
+    Xtrain  = X.drop(i)#np.concatenate([X[0:i],X[i+1:]])
+    ytrain = y.drop(i) #np.concatenate([y[0:i],y[i+1:]])
+    clf.fit(Xtrain,ytrain)
+    # clf1 = feature_selection_threshold(Xtrain,ytrain,original_attributes,ntrees,replace,mtry,max_depth,missing_branch,balance,
+    #    cutoff,ntimes=ntimes,title=class_name,missing_rate=True,vitype=vitype,vimissing=True,backwards=True)
     
-    # clf = rf.RandomForest(ntrees=ntrees,oob_error=True,random_state=seed,
-    #     mtry=mtry,missing_branch=missing_branch,prob_answer=False,max_depth=max_depth,replace=replace,balance=False,random_subspace=True)
-    
-    # clf.attributes = np.array(['Q44071_snDorPos', 'Q44071_opcLcSensTatil[C7]', 'Q61802_opctransferencias[SQ003]',
-    #      'Q44071_opcLcSensor[C7]', 'Q44071_opcLcSensTatil[C8]', 'Q44071_formTempoAval',  'Q44071_opcLcSensTatil[C6]',
-    #      'Q44071_opcForca[FlexDedos]', 'Q44071_opcLcSensor[C8]','Q44071_snFxPr',
-    #      'Q44071_opcLcSensTatil[T1]','Q44071_opcForca[AdDedos]','Q44071_snFxAt']) 
-    
-    #clf1.attributes = np.array(['Q61802_opctransferencias[SQ003]', 'Q44071_opcForca[FlexCotovelo]','Q44071_snDesacordado','Q44071_lisTpAuxilio[Tipoia]','Q44071_lisTpAuxilio[Suporte]'])
-    #clf1.attributes = np.array(['Q61802_opcLdCirurgia','Q44071_snCplexoAt', 'Q61802_opctransferencias[SQ003]', 'Q44071_opcForca[AbdOmbro]','Q44071_lisTpTrauma[moto]','Q44071_lisTpAuxilio[Tipoia]','Q44071_lisTpAuxilio[Suporte]'])
-    #clf1.attributes = np.array(['Q44071_lisTpTrauma[moto]','Q44071_lisTpAuxilio[Tipoia]','Q44071_lisTpAuxilio[Suporte]','Q44071_snCplexoAt'])
-
-
-    scores = 0
-    s = []
-    ivp,ifp,ifn,ivn,svp,sfp,sfn,svn = 0,0,0,0,0,0,0,0 
-    #print(1-clf1.oob_error_)
-    for i in range(X.shape[0]):
-        Xtrain  = X.drop(i)#np.concatenate([X[0:i],X[i+1:]])
-        ytrain = y.drop(i) #np.concatenate([y[0:i],y[i+1:]])
-        clf.fit(Xtrain,ytrain)
-        # clf1 = feature_selection_threshold(Xtrain,ytrain,original_attributes,ntrees,replace,mtry,max_depth,missing_branch,balance,
-        #    cutoff,ntimes=ntimes,title=class_name,missing_rate=True,vitype=vitype,vimissing=True,backwards=True)
-        
-        if(y[i] == 'SUCESSO'):
-            if(clf.predict(X.loc[i]) == 'SUCESSO'):
-                svp+=1
-                ivn+=1
-            else:
-                sfp+=1
-                ifn+=1
+    if(y[i] == 'SUCESSO'):
+        if(clf.predict(X.loc[i]) == 'SUCESSO'):
+            svp+=1
+            ivn+=1
         else:
-            if(clf.predict(X.loc[i]) == 'SUCESSO'):
-                sfn+=1
-                ifp+=1
-            else:
-                svn+=1
-                ivp+=1
-        scores += clf.score(X.loc[i],y.loc[i]) 
-        s.append(clf.score(X.loc[i],y.loc[i]))
-    print('desvio: %r' % np.std(s))
-    print(scores/X.shape[0])
-    p = svp/(svp+sfp)
-    c = svp/(svp+sfn)
-    if(p + c == 0):
-        f = 0
+            sfp+=1
+            ifn+=1
     else:
-        f = (2*p*c)/(p+c)
-    print('SUCESSO --- cobertura: %r precisão: %r medida-F: %r ' % (c,p,f))
-    p = ivp/(ivp+ifp)
-    c = ivp/(ivp+ifn)
-    if(p + c == 0):
-        f = 0
-    else:
-        f = (2*p*c)/(p+c)
-    print('INSATISFATÓRIO --- cobertura: %r precisão: %r medida-F: %r ' % (c,p,f))
+        if(clf.predict(X.loc[i]) == 'SUCESSO'):
+            sfn+=1
+            ifp+=1
+        else:
+            svn+=1
+            ivp+=1
+    scores += clf.score(X.loc[i],y.loc[i]) 
+    s.append(clf.score(X.loc[i],y.loc[i]))
+print('desvio: %r' % np.std(s))
+print(scores/X.shape[0])
+p = svp/(svp+sfp)
+c = svp/(svp+sfn)
+if(p + c == 0):
+    f = 0
+else:
+    f = (2*p*c)/(p+c)
+print('SUCESSO --- cobertura: %r precisão: %r medida-F: %r ' % (c,p,f))
+p = ivp/(ivp+ifp)
+c = ivp/(ivp+ifn)
+if(p + c == 0):
+    f = 0
+else:
+    f = (2*p*c)/(p+c)
+print('INSATISFATÓRIO --- cobertura: %r precisão: %r medida-F: %r ' % (c,p,f))
 
-    #exit()
+#exit()
 
   
 
