@@ -7,7 +7,7 @@ import os
 import sys
 import utils
 from datetime import datetime
-import pdb
+
 
 # some assumptions made in order for this script to work properly:
 #   - the answers from the same patient should be together (no other patient answer between them)
@@ -18,8 +18,8 @@ import pdb
 # so I want to use the metadata info to do that.  
 
 def processMetadata(metadata):#
+    print("Processing metadata...")
     #metadata = pd.read_csv(file_name, header=0, delimiter=",", na_values=['N/A', 'None', 'NAAI'], quoting=0, encoding='utf8', mangle_dupe_cols=False)
-    import pdb
     field_names = metadata.loc[:,['question_code', 'question_description','question_scale','question_scale_label']].drop_duplicates()
     code_description_fields = {}
     descriptions = {}
@@ -90,7 +90,7 @@ def processMetadata(metadata):#
 
 def unifyColumsBySide(data,metadata_paths,class_questionnaire,class_name,classify=False): #entrada_dados.csv   
     #data = pd.read_csv(file_name, header=0, delimiter=",", na_values=['N/A', 'None', 'NAAI'], quoting=0, encoding='utf8', mangle_dupe_cols=False)
-    
+    print("Unifying columns by side of injury...")
     metadata = join_metadata_files(metadata_paths,'participant code')
     cdf,right_side_fields,left_side_fields,not_explicited_side_fields = processMetadata(metadata)
     matched_fields = {}
@@ -439,7 +439,7 @@ def merge_files(filename_left,data_right,condition,how):
     
     #data.to_csv(out,index=False)
 
-# concat data files on participant_code, follow-up being the one that we need to preserve all the rows, and
+# concat data files on participant code, follow-up being the one that we need to preserve all the rows, and
 # the other ones being complementary. At this point the attributes need to be preceded by an id for the questionnaires.
 # Then union metadata files adding the questionnaire id to the name of the attributes. Then produce the data with
 # the output file -> that no longer will be a file.
@@ -481,7 +481,7 @@ def join_data_files(list_of_files,condition,main_questionnaire='Q44071',class_qu
     
 
     cq = False
-
+    "Getting list of files..."
     for file_index in range(len(list_of_files)):
         if main_questionnaire in list_of_files[file_index]:
             tmp = list_of_files[0]
@@ -527,9 +527,7 @@ def join_data_files(list_of_files,condition,main_questionnaire='Q44071',class_qu
                     s = s_to_merge
                 else:
                     s = s.merge(s_to_merge, how = 'outer', on=condition)
-        # s.to_csv('Cirurgica.csv',index=False)
-        # print(os.getcwd())
-        # print('done')
+
         # exit()
         # print('shape before: {0}'.format(r.shape))
         # print('shape of surgical: {0}'.format(s.shape))
@@ -540,8 +538,6 @@ def join_data_files(list_of_files,condition,main_questionnaire='Q44071',class_qu
     if(unify_surgery):
         for ix,row in data.iterrows():
             if(row[main_questionnaire+'_snCplexoAt'] != 'S' and row[main_questionnaire+'_snCplexoAt'] != 'Y'):
-                #import pdb
-                #pdb.set_trace()
                 if(row[class_questionnaire+'_snCplexoAt'] == 'S' or row[class_questionnaire+'_snCplexoAt'] == 'Y' or
                  not utils.isnan(row[surgery_questionnaire+'_formTempoCirurg'])):
                     data.set_value(ix,main_questionnaire+'_snCplexoAt','S')
@@ -549,6 +545,7 @@ def join_data_files(list_of_files,condition,main_questionnaire='Q44071',class_qu
     return data
 
 def treat_main_questionnaire_data(filename,condition,main_questionnaire_code):
+    print("Preprocessing questionnaire %s..." % main_questionnaire_code)
     r = get_data(filename,condition)
     columns = np.array(r.columns)
     for column_index in range(len(columns)):
@@ -623,11 +620,12 @@ def class_value_is_valid(row,tmp,class_questionnaire,class_name):
     return False
 
 def treat_class_questionnaire_data(filename,condition,class_questionnaire,class_name,unify_surgery):
-
+    print("Preprocessing questionnaire %s" % class_questionnaire)
     tmp = get_data(filename,condition)
     acquisition_time_code = tmp.filter(like=class_questionnaire+'_formTempoAval').columns[0]
     r_to_merge = pd.DataFrame(columns = tmp.columns)
     #class_index = np.where(tmp.columns == class_questionnaire+'_'+class_name)[0][0]
+       
 
     i = 0
     for ix,row in tmp.iterrows():
@@ -643,8 +641,7 @@ def treat_class_questionnaire_data(filename,condition,class_questionnaire,class_
             
         i += 1
     # for ix,row in tmp.iterrows():
-    #     # if(row[0] == 'P23391'):
-    #     #    pdb.set_trace()
+
     #     #print(row[0])
     #     if i == 0 or tmp[condition][ix] != r_to_merge[condition].values[-1]: 
     #         r_to_merge = r_to_merge.append(row)
@@ -704,7 +701,6 @@ def treat_surgical_questionnaire_data(filename,condition,surgical_questionnaire_
     #i = 0
     for i,row in df.iterrows():
 
-        #pdb.set_trace()
         if i == 0 or row[condition] != r_to_merge[condition].values[-1]:
             r_to_merge.loc[r_to_merge.shape[0]] = row.values
 
@@ -740,8 +736,6 @@ def treat_surgical_questionnaire_data(filename,condition,surgical_questionnaire_
                 continue
 
             for procedure in code_procedure.keys():
-                # if(row[condition] == 'P87791'):
-                #     pdb.set_trace()
                 if(row[surgical_questionnaire_code+'_lisprocedimentos'+code_procedure[procedure]] == 'Y'):
                     r_to_merge.set_value(r_to_merge.index[-1],surgical_questionnaire_code+'_lisprocedimentos'+code_procedure[procedure], 'Y')
                     css = r_to_merge.filter(regex=r'(lisprocedimentos)(?!' + re.escape(code_procedure[procedure])+ ')').columns
@@ -924,7 +918,7 @@ def preprocess(path,main_questionnaire,class_questionnaire,surgery_questionnaire
     #cdf,right_side_fields,left_side_fields,not_explicited_side_fields = processMetadata(metadata)
     print('Unifying columns by side...')
     data = unifyColumsBySide(data,metadata_paths,class_questionnaire,class_name,classify)
-    #data = merge_files('Dados_sociodemograficos.csv', data, condition = 'participant_code', how = 'right')
+    #data = merge_files('Dados_sociodemograficos.csv', data, condition = 'participant code', how = 'right')
     if(classify is False):
         if 'Dor' not in class_name:
             data = numeric_to_binary(data,class_questionnaire+'_'+class_name,'Insatisfatorio','Sucesso',3)
@@ -967,7 +961,11 @@ def preprocess(path,main_questionnaire,class_questionnaire,surgery_questionnaire
     # print(data.columns[data.columns.str.endswith('gender')][1:])
     data = (data.drop(data.columns[data.columns.str.endswith('gender')][1:],1))
     if(reduced):
-        data = reduce(data, main_questionnaire,False,surgery_questionnaire,class_name,'participant code')
+        if(classify is False):
+            data = reduce(data, main_questionnaire,class_questionnaire,surgery_questionnaire,class_name,'participant code')
+        else:
+          data = reduce(data, main_questionnaire,False,surgery_questionnaire,class_name,'participant code')
+  
     #final_data = (final_data.T).dropna(how='all').T
     print(data.shape)
     if(classify is False):
@@ -979,17 +977,16 @@ def preprocess(path,main_questionnaire,class_questionnaire,surgery_questionnaire
         final_data.to_csv(out,index=False)
 
 
-
-preprocess('EXPERIMENT_DOWNLOAD','Q44071','Q92510','Q61802','snDorPos',classify='P10666',out='Patient1.csv',not_applicable=True, reduced=True,surgery=True,to_binary=True,unify_surgery=True,language='pt')
-exit()
+#preprocess('EXPERIMENT_DOWNLOAD','Q44071','Q92510','Q61802','snDorPos',classify='P10666',out='Patient1.csv',not_applicable=True, reduced=True,surgery=True,to_binary=True,unify_surgery=True,language='pt')
+#exit()
 
 # preprocess('EXPERIMENT_DOWNLOAD', 'Q44071','Q92510','Q61802','snDorPos', out = 'DorCirurgiaCategNA.csv',not_applicable=True, reduced=False,surgery=True,to_binary=True,unify_surgery=True,language='pt')
-# preprocess('EXPERIMENT_DOWNLOAD', 'Q44071','Q92510','Q61802','snDorPos', out = 'DorCirurgiaCategNAReduzido.csv',not_applicable=True, reduced=True,surgery=True,to_binary=True,unify_surgery=True,language='pt')
+preprocess('EXPERIMENT_DOWNLOAD', 'Q44071','Q92510','Q61802','snDorPos', out = 'DorCirurgiaCategNAReduzido.csv',not_applicable=True, reduced=True,surgery=True,to_binary=True,unify_surgery=True,language='pt')
 # preprocess('EXPERIMENT_DOWNLOAD', 'Q44071','Q92510','opcForca[AbdOmbro]', out = 'AbdOmbroCirurgiaCateg.csv',not_applicable=False, reduced=False,surgery=True,dif_surgery=False,to_binary=True,unify_surgery=True,language='pt')
 # preprocess('EXPERIMENT_DOWNLOAD', 'Q44071','Q92510','opcForca[AbdOmbro]', out = 'AbdOmbroCirurgia.csv',not_applicable=False, reduced=False,surgery=True,dif_surgery=False,to_binary=False,unify_surgery=True,language='pt')
 #preprocess('EXPERIMENT_DOWNLOAD', 'Q44071','Q92510','opcForca[AbdOmbro]', out = 'AbdOmbroCirurgiaCategReduzidoNA.csv',not_applicable=True, reduced=True,surgery=True,dif_surgery=False,to_binary=True,unify_surgery=True,language='pt')
-#exit()
-preprocess('EXPERIMENT_DOWNLOAD', 'Q44071','Q92510','Q61802','opcForca[AbdOmbro]', out = 'AbdOmbroCirurgiaCategNA.csv',not_applicable=True, reduced=False,surgery=True,to_binary=True,unify_surgery=True,language='pt')
+exit()
+#preprocess('EXPERIMENT_DOWNLOAD', 'Q44071','Q92510','Q61802','opcForca[AbdOmbro]', out = 'AbdOmbroCirurgiaCategNA.csv',not_applicable=True, reduced=False,surgery=True,to_binary=True,unify_surgery=True,language='pt')
 preprocess('EXPERIMENT_DOWNLOAD', 'Q44071','Q92510','Q61802','opcForca[AbdOmbro]', out = 'AbdOmbroCirurgiaCategNAReduzido.csv',not_applicable=True, reduced=True,surgery=True,to_binary=True,unify_surgery=True,language='pt')
 
 print('DONE WITH ABDOMBRO!')
@@ -999,14 +996,14 @@ print('\n\n')
 # preprocess('EXPERIMENT_DOWNLOAD', 'Q44071','Q92510','opcForca[RotEOmbro]', out = 'RotEOmbroPrePos.csv',surgery=False,dif_surgery=True,to_binary=False,unify_surgery=True,language='pt')
 # preprocess('EXPERIMENT_DOWNLOAD', 'Q44071','Q92510','opcForca[RotEOmbro]', out = 'RotEOmbroPrePosCateg.csv',surgery=False,dif_surgery=True,to_binary=True,unify_surgery=True,language='pt')
 #preprocess('EXPERIMENT_DOWNLOAD', 'Q44071','Q92510','opcForca[RotEOmbro]', out = 'RotEOmbroCirurgia.csv',surgery=True,dif_surgery=False,to_binary=False,unify_surgery=True,language='pt')
-preprocess('EXPERIMENT_DOWNLOAD', 'Q44071','Q92510','Q61802','opcForca[RotEOmbro]', out = 'RotEOmbroCirurgiaCategNA.csv',not_applicable=True, reduced=False,surgery=True,to_binary=True,unify_surgery=True,language='pt')
+#preprocess('EXPERIMENT_DOWNLOAD', 'Q44071','Q92510','Q61802','opcForca[RotEOmbro]', out = 'RotEOmbroCirurgiaCategNA.csv',not_applicable=True, reduced=False,surgery=True,to_binary=True,unify_surgery=True,language='pt')
 preprocess('EXPERIMENT_DOWNLOAD', 'Q44071','Q92510','Q61802','opcForca[RotEOmbro]', out = 'RotEOmbroCirurgiaCategNAReduzido.csv',not_applicable=True, reduced=True,surgery=True,to_binary=True,unify_surgery=True,language='pt')
 # preprocess('EXPERIMENT_DOWNLOAD', 'Q44071','Q92510','opcForca[RotEOmbro]', out = 'RotEOmbroCirurgiaCateg.csv',not_applicable=False, reduced=False,surgery=True,dif_surgery=False,to_binary=True,unify_surgery=True,language='pt')
 # preprocess('EXPERIMENT_DOWNLOAD', 'Q44071','Q92510','opcForca[RotEOmbro]', out = 'RotEOmbroCirurgia.csv',not_applicable=False, reduced=False,surgery=True,dif_surgery=False,to_binary=False,unify_surgery=True,language='pt')
 
 print('DONE WITH ROTEOMBRO!')
 print('\n\n')
-preprocess('EXPERIMENT_DOWNLOAD', 'Q44071','Q92510','Q61802','opcForca[FlexCotovelo]', out = 'FlexCotoveloCirurgiaCategNA.csv',not_applicable=True, reduced=False,surgery=True,to_binary=True,unify_surgery=True,language='pt')
+#preprocess('EXPERIMENT_DOWNLOAD', 'Q44071','Q92510','Q61802','opcForca[FlexCotovelo]', out = 'FlexCotoveloCirurgiaCategNA.csv',not_applicable=True, reduced=False,surgery=True,to_binary=True,unify_surgery=True,language='pt')
 preprocess('EXPERIMENT_DOWNLOAD', 'Q44071','Q92510','Q61802','opcForca[FlexCotovelo]', out = 'FlexCotoveloCirurgiaCategNAReduzido.csv',not_applicable=True, reduced=True,surgery=True,to_binary=True,unify_surgery=True,language='pt')
 # preprocess('EXPERIMENT_DOWNLOAD', 'Q44071','Q92510','opcForca[FlexCotovelo]', out = 'FlexCotoveloCirurgiaCateg.csv',not_applicable=False, reduced=False,surgery=True,dif_surgery=False,to_binary=True,unify_surgery=True,language='pt')
 # preprocess('EXPERIMENT_DOWNLOAD', 'Q44071','Q92510','opcForca[FlexCotovelo]', out = 'FlexCotoveloCirurgia.csv',not_applicable=False, reduced=False,surgery=True,dif_surgery=False,to_binary=False,unify_surgery=True,language='pt')
@@ -1017,9 +1014,9 @@ preprocess('EXPERIMENT_DOWNLOAD', 'Q44071','Q92510','Q61802','opcForca[FlexCotov
 # preprocess('EXPERIMENT_DOWNLOAD', 'Q44071','Q92510','opcForca[FlexCotovelo]', out = 'FlexCotoveloPrePosCateg.csv',surgery=False,dif_surgery=True,to_binary=True,unify_surgery=True,language='pt')
 #preprocess('EXPERIMENT_DOWNLOAD', 'Q44071','Q92510','opcForca[FlexCotovelo]', out = 'FlexCotoveloCirurgia.csv',surgery=True,dif_surgery=False,to_binary=False,unify_surgery=True,language='pt')
 
-#merge_files('Dados_sociodemograficos.csv','FlexCotovelo.csv',out='FlexCotovelo.csv',condition='participant_code',how='right')
+#merge_files('Dados_sociodemograficos.csv','FlexCotovelo.csv',out='FlexCotovelo.csv',condition='participant code',how='right')
 #numeric_to_binary('FlexCotovelo.csv','Insatisfatorio','Sucesso',2,'FlexCotovelo.csv')
 #differentiatePreAndPostSurgery('FlexCotovelo.csv','FlexCotovelo.csv')
 
 
-#get_frequencies_of_return('Dor_com_seguimento_pacientes_repetidos.csv','participant_code')
+#get_frequencies_of_return('Dor_com_seguimento_pacientes_repetidos.csv','participant code')
