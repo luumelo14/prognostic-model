@@ -110,8 +110,10 @@ def classify(pacient_filename,model_filename,class_name):
 
     data = read.readData(data_path = pacient_filename, class_name = class_name)
     X = data[data.columns[:-1]]
-    classdict = clf.predict(X,prob=True)
-    transform_to_JSON(clf,clf.feature_contribution(X),out='classification_'+class_name+'.json',diffsur=False,addline=classdict[0])
+    classdict = (clf.predict(X,prob=True))[0]
+    outcome = max(classdict,key=classdict.get)
+    print(f"Outcome {outcome} with {classdict[outcome]/sum(classdict.values())*100}% of probabily.")
+    transform_to_JSON(clf,clf.feature_contribution(X),out='classification_'+class_name+'.json',diffsur=False,addline=classdict)
 
 
 # with open('prognostic_model_'+ class_name[7:] + '.pickle', 'rb') as handle:
@@ -119,11 +121,11 @@ def classify(pacient_filename,model_filename,class_name):
 # transform_to_JSON(clf,clf.feature_contribution())
 # continue
 
-# classify('../Patient3.csv','prognostic_model_snDorPos.pickle','Q92510_snDorPos'
+classify('out.csv','prognostic_model_Q92510_snDorPos0.pickle','Q92510_snDorPos')
 # classify('../Patient3.csv','prognostic_model_opcForca[AbdOmbro].pickle','Q92510_opcForca[AbdOmbro]')
 # classify('../Patient3.csv','prognostic_model_opcForca[FlexCotovelo].pickle','Q92510_opcForca[FlexCotovelo]')
 # classify('../Patient3.csv','prognostic_model_opcForca[RotEOmbro].pickle','Q92510_opcForca[RotEOmbro]')
-models_transform_to_JSON('snDorPos')
-models_transform_to_JSON('opcForca[AbdOmbro]')
-models_transform_to_JSON('opcForca[FlexCotovelo]')
-models_transform_to_JSON('opcForca[RotEOmbro]')
+# models_transform_to_JSON('snDorPos')
+# models_transform_to_JSON('opcForca[AbdOmbro]')
+# models_transform_to_JSON('opcForca[FlexCotovelo]')
+# models_transform_to_JSON('opcForca[RotEOmbro]')
