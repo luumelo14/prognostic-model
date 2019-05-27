@@ -976,35 +976,64 @@ def preprocess(path,main_questionnaire,class_questionnaire,surgery_questionnaire
     if(out is not None):
         final_data.to_csv(out,index=False)
 
+def display_menu():
+    valid = False
+    while(not valid):
+        dirname = input("Please provide the path for the directory containing questionnaire files (e.g. ~/Downloads/download/EXPERIMENT_DOWNLOAD):\n")
+        if(not os.path.isdir(dirname)):
+            print("%s is not a valid directory.\n" % dirname)
+        else:
+            while(not valid):
+                ct = input('Enter "c" to preprocess file for classifying or "t" for training:\n')
+                if(ct[0] != 'c' and ct[0] != 't'):
+                    print("%s is not a valid option.\n" % ct[0])
+                else:
+                    output = input("Please provide output name for preprocessed file (default='out.csv'):\n")
+                    if(len(output) > 0):
+                        if(len(output) < 4 or output[-4:] != ".csv"):
+                            output=output+".csv"
+                    else:
+                        output="out.csv"
+                    valid = True
+    if(ct == 'c'):
+        patient_code = input('Please provide patient code (e.g.: P10666):\n')
+        preprocess('EXPERIMENT_DOWNLOAD','Q44071','Q92510','Q61802',False,classify=patient_code,out=output,not_applicable=True, reduced=True,surgery=True,to_binary=True,unify_surgery=True,language='pt')
+    else:
+        class_name = input('Please provide class name (e.g.: snDorPos, opcForca[RotEOmbro],opcForca[FlexCotovelo],opcForca[AbdOmbro]): ')
+        preprocess('EXPERIMENT_DOWNLOAD', 'Q44071','Q92510','Q61802',class_name, out = output,not_applicable=True, reduced=True,surgery=True,to_binary=True,unify_surgery=True,language='pt')
 
+             
+
+if __name__ == '__main__':
+    display_menu()
 #preprocess('EXPERIMENT_DOWNLOAD','Q44071','Q92510','Q61802','snDorPos',classify='P10666',out='Patient1.csv',not_applicable=True, reduced=True,surgery=True,to_binary=True,unify_surgery=True,language='pt')
 #exit()
 
 # preprocess('EXPERIMENT_DOWNLOAD', 'Q44071','Q92510','Q61802','snDorPos', out = 'DorCirurgiaCategNA.csv',not_applicable=True, reduced=False,surgery=True,to_binary=True,unify_surgery=True,language='pt')
-preprocess('EXPERIMENT_DOWNLOAD', 'Q44071','Q92510','Q61802','snDorPos', out = 'DorCirurgiaCategNAReduzido.csv',not_applicable=True, reduced=True,surgery=True,to_binary=True,unify_surgery=True,language='pt')
+#preprocess('EXPERIMENT_DOWNLOAD', 'Q44071','Q92510','Q61802','snDorPos', out = 'DorCirurgiaCategNAReduzido.csv',not_applicable=True, reduced=True,surgery=True,to_binary=True,unify_surgery=True,language='pt')
 # preprocess('EXPERIMENT_DOWNLOAD', 'Q44071','Q92510','opcForca[AbdOmbro]', out = 'AbdOmbroCirurgiaCateg.csv',not_applicable=False, reduced=False,surgery=True,dif_surgery=False,to_binary=True,unify_surgery=True,language='pt')
 # preprocess('EXPERIMENT_DOWNLOAD', 'Q44071','Q92510','opcForca[AbdOmbro]', out = 'AbdOmbroCirurgia.csv',not_applicable=False, reduced=False,surgery=True,dif_surgery=False,to_binary=False,unify_surgery=True,language='pt')
 #preprocess('EXPERIMENT_DOWNLOAD', 'Q44071','Q92510','opcForca[AbdOmbro]', out = 'AbdOmbroCirurgiaCategReduzidoNA.csv',not_applicable=True, reduced=True,surgery=True,dif_surgery=False,to_binary=True,unify_surgery=True,language='pt')
-exit()
-#preprocess('EXPERIMENT_DOWNLOAD', 'Q44071','Q92510','Q61802','opcForca[AbdOmbro]', out = 'AbdOmbroCirurgiaCategNA.csv',not_applicable=True, reduced=False,surgery=True,to_binary=True,unify_surgery=True,language='pt')
-preprocess('EXPERIMENT_DOWNLOAD', 'Q44071','Q92510','Q61802','opcForca[AbdOmbro]', out = 'AbdOmbroCirurgiaCategNAReduzido.csv',not_applicable=True, reduced=True,surgery=True,to_binary=True,unify_surgery=True,language='pt')
 
-print('DONE WITH ABDOMBRO!')
-print('\n\n')
+#preprocess('EXPERIMENT_DOWNLOAD', 'Q44071','Q92510','Q61802','opcForca[AbdOmbro]', out = 'AbdOmbroCirurgiaCategNA.csv',not_applicable=True, reduced=False,surgery=True,to_binary=True,unify_surgery=True,language='pt')
+# preprocess('EXPERIMENT_DOWNLOAD', 'Q44071','Q92510','Q61802','opcForca[AbdOmbro]', out = 'AbdOmbroCirurgiaCategNAReduzido.csv',not_applicable=True, reduced=True,surgery=True,to_binary=True,unify_surgery=True,language='pt')
+
+# print('DONE WITH ABDOMBRO!')
+# print('\n\n')
 # preprocess('EXPERIMENT_DOWNLOAD', 'Q44071','Q92510','opcForca[RotEOmbro]', out = 'RotEOmbroCirurgiaPrePosCateg.csv',surgery=True,dif_surgery=True,to_binary=True,unify_surgery=True,language='pt')
 # preprocess('EXPERIMENT_DOWNLOAD', 'Q44071','Q92510','opcForca[RotEOmbro]', out = 'RotEOmbroCirurgiaPrePos.csv',surgery=True,dif_surgery=True,to_binary=False,unify_surgery=True,language='pt')
 # preprocess('EXPERIMENT_DOWNLOAD', 'Q44071','Q92510','opcForca[RotEOmbro]', out = 'RotEOmbroPrePos.csv',surgery=False,dif_surgery=True,to_binary=False,unify_surgery=True,language='pt')
 # preprocess('EXPERIMENT_DOWNLOAD', 'Q44071','Q92510','opcForca[RotEOmbro]', out = 'RotEOmbroPrePosCateg.csv',surgery=False,dif_surgery=True,to_binary=True,unify_surgery=True,language='pt')
 #preprocess('EXPERIMENT_DOWNLOAD', 'Q44071','Q92510','opcForca[RotEOmbro]', out = 'RotEOmbroCirurgia.csv',surgery=True,dif_surgery=False,to_binary=False,unify_surgery=True,language='pt')
 #preprocess('EXPERIMENT_DOWNLOAD', 'Q44071','Q92510','Q61802','opcForca[RotEOmbro]', out = 'RotEOmbroCirurgiaCategNA.csv',not_applicable=True, reduced=False,surgery=True,to_binary=True,unify_surgery=True,language='pt')
-preprocess('EXPERIMENT_DOWNLOAD', 'Q44071','Q92510','Q61802','opcForca[RotEOmbro]', out = 'RotEOmbroCirurgiaCategNAReduzido.csv',not_applicable=True, reduced=True,surgery=True,to_binary=True,unify_surgery=True,language='pt')
+#preprocess('EXPERIMENT_DOWNLOAD', 'Q44071','Q92510','Q61802','opcForca[RotEOmbro]', out = 'RotEOmbroCirurgiaCategNAReduzido.csv',not_applicable=True, reduced=True,surgery=True,to_binary=True,unify_surgery=True,language='pt')
 # preprocess('EXPERIMENT_DOWNLOAD', 'Q44071','Q92510','opcForca[RotEOmbro]', out = 'RotEOmbroCirurgiaCateg.csv',not_applicable=False, reduced=False,surgery=True,dif_surgery=False,to_binary=True,unify_surgery=True,language='pt')
 # preprocess('EXPERIMENT_DOWNLOAD', 'Q44071','Q92510','opcForca[RotEOmbro]', out = 'RotEOmbroCirurgia.csv',not_applicable=False, reduced=False,surgery=True,dif_surgery=False,to_binary=False,unify_surgery=True,language='pt')
 
-print('DONE WITH ROTEOMBRO!')
-print('\n\n')
+#print('DONE WITH ROTEOMBRO!')
+#print('\n\n')
 #preprocess('EXPERIMENT_DOWNLOAD', 'Q44071','Q92510','Q61802','opcForca[FlexCotovelo]', out = 'FlexCotoveloCirurgiaCategNA.csv',not_applicable=True, reduced=False,surgery=True,to_binary=True,unify_surgery=True,language='pt')
-preprocess('EXPERIMENT_DOWNLOAD', 'Q44071','Q92510','Q61802','opcForca[FlexCotovelo]', out = 'FlexCotoveloCirurgiaCategNAReduzido.csv',not_applicable=True, reduced=True,surgery=True,to_binary=True,unify_surgery=True,language='pt')
+#preprocess('EXPERIMENT_DOWNLOAD', 'Q44071','Q92510','Q61802','opcForca[FlexCotovelo]', out = 'FlexCotoveloCirurgiaCategNAReduzido.csv',not_applicable=True, reduced=True,surgery=True,to_binary=True,unify_surgery=True,language='pt')
 # preprocess('EXPERIMENT_DOWNLOAD', 'Q44071','Q92510','opcForca[FlexCotovelo]', out = 'FlexCotoveloCirurgiaCateg.csv',not_applicable=False, reduced=False,surgery=True,dif_surgery=False,to_binary=True,unify_surgery=True,language='pt')
 # preprocess('EXPERIMENT_DOWNLOAD', 'Q44071','Q92510','opcForca[FlexCotovelo]', out = 'FlexCotoveloCirurgia.csv',not_applicable=False, reduced=False,surgery=True,dif_surgery=False,to_binary=False,unify_surgery=True,language='pt')
 
