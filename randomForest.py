@@ -97,8 +97,8 @@ class RandomForest(object):
         else:
             Xfit = self.X 
             yfit = self.y
-
-        self.forest = Parallel(n_jobs=-2)(delayed(self.create_trees)(n_samples, n_sub_samples, classes, min_class_index, t, Xfit, yfit) for t in range(self.ntrees))
+    
+        self.forest = Parallel(n_jobs=-2,backend='multiprocessing')(delayed(self.create_trees)(n_samples, n_sub_samples, classes, min_class_index, t, Xfit, yfit) for t in range(self.ntrees))
 
         if self.oob_error is True:
             #print('Calculating oob error...')
