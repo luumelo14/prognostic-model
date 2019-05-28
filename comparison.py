@@ -24,7 +24,7 @@ import pickle
 # DOI=http://dx.doi.org/10.1016/j.patrec.2010.03.014  
 def feature_selection_threshold(X,y,ntrees,replace,mtry,max_depth,missing_branch,balance,
     cutoff,ntimes=25,title=None,missing_rate=False,vitype='err',vimissing=True,backwards=False,save_models=False,random_subspace=False):
-    
+
     # get average feature importances for each feature
     vis =  average_varimp(X,y,ntrees,replace,mtry,max_depth,missing_branch,balance=balance,
         missing_rate=missing_rate,ntimes=ntimes,select=False,mean=False,vitype=vitype,vimissing=vimissing,printvi=False,random_subspace=random_subspace)
@@ -77,7 +77,12 @@ def feature_selection_threshold(X,y,ntrees,replace,mtry,max_depth,missing_branch
         
         clf.fit(X[X.columns[features]],y)
         clf.threshold = threshold
+        if('participant code' not in clf.X.columns):
+            clf.X['participant code'] = X['participant code']
+        if('Q44071_snCplexoAt' not in clf.X.columns):
+            clf.X['Q44071_snCplexoAt'] = X['Q44071_snCplexoAt']
         scores.append(1-clf.oob_error_)
+
 
         if(save_models is True):
             with open('prognostic_model_' + title+ str(nn) + '.pickle', 'wb') as handle:
@@ -288,10 +293,10 @@ def get_data_info():
     return data_path,class_questionnaire,class_name
 
 if __name__ == '__main__':
-    data_paths = [['DorCirurgiaCategNAReduzido.csv','Q92510_snDorPos'],
-    ['AbdOmbroCirurgiaCategNAReduzido.csv','Q92510_opcForca[AbdOmbro]'],
-    ['FlexCotoveloCirurgiaCategNAReduzido.csv','Q92510_opcForca[FlexCotovelo]'],
-    ['RotEOmbroCirurgiaCategNAReduzido.csv','Q92510_opcForca[RotEOmbro]']]
+    data_paths = [['data/DorCirurgiaCategNAReduzido.csv','Q92510_snDorPos'],
+    ['data/AbdOmbroCirurgiaCategNAReduzido.csv','Q92510_opcForca[AbdOmbro]'],
+    ['data/FlexCotoveloCirurgiaCategNAReduzido.csv','Q92510_opcForca[FlexCotovelo]'],
+    ['data/RotEOmbroCirurgiaCategNAReduzido.csv','Q92510_opcForca[RotEOmbro]']]
     #data_path,class_questionnaire,class_name = get_data_info()
     class_questionnaire = 'Q92510'
     missing_input= 'none' #'mean'
