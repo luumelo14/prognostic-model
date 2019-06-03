@@ -11,12 +11,13 @@ def models_transform_to_JSON(class_name,file_name=None):
     for i in range(200): 
         special = False
         try:
-            filename = '../saved_models/prognostic_model_Q92510_'+class_name+str(i)+'.pickle'
+            filename = 'models/prognostic_model_Q92510_'+class_name+str(i)+'.pickle'
             with open(filename,'rb') as handle:
                 clf = pickle.load(handle)
                 F[filename[16:]] = {'threshold': format(clf.threshold,'.6f'), 
                 'accuracy':round(1-clf.oob_error_,4), 'features' : list(clf.X.columns),
                 'datapath': filename, 'special': False}
+                
                 
         except(FileNotFoundError):
             break
@@ -96,7 +97,9 @@ def transform_to_JSON(clf,fcs,out='FeatureContributions.json',diffsur=True,X=Non
 
 
 
-# class_name="Q92510_snDorPos19"
+class_name="snDorPos"
 # with open('prognostic_model_'+ class_name + '.pickle', 'rb') as handle:
 #     clf = pickle.load(handle)
 # transform_to_JSON(clf,clf.feature_contribution())
+
+models_transform_to_JSON(class_name,file_name=None)
